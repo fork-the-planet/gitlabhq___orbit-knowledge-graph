@@ -1,3 +1,20 @@
+## [0.46.0](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.45.0...v0.46.0) (2026-05-04)
+
+### Features
+
+* **code-graph:** store start_char and end_char for definitions and imports ([f2e5e1f](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/f2e5e1f536bdd8cadc83a00e3465328a1b2035ff)) by Kai Armstrong
+* **indexer:** propagate envelope ID as correlation_id in engine spans ([3cbaf60](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/3cbaf605934707e28873a4eece0d0de6b723e1e6)) by Jean-Gabriel Doyon
+
+### Fixes
+
+* **e2e:** clean orphaned cluster-scoped helm resources ([9c09e3a](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/9c09e3a3731f6ebd37be7fb19b8f3d14b991d749)) by Bohdan Parkhomchuk
+* **observability:** reduce metric cardinality to stay within Mimir limits ([5625bed](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/5625bed82aa3321c0fb3288d1916c2084530b492)) by Jean-Gabriel Doyon
+* **ontology:** enable allow_part_offset_column_in_projections for LWP tables ([e0cf94a](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/e0cf94a47275322321c6c5745e5155f68fef39ff)) by Michael Usachenko
+
+### Other
+
+* **deps:** update all ra_ap crates to 0.0.331 ([23ad5e2](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/23ad5e25c32ca3c6617d0ba07d97afebd0811a40)) by Jean-Gabriel Doyon
+
 ## [0.45.0](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.44.0...v0.45.0) (2026-05-04)
 
 ### Features
