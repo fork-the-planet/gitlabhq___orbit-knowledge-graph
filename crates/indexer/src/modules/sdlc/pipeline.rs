@@ -8,7 +8,10 @@ use arrow::record_batch::RecordBatch;
 use chrono::{DateTime, Utc};
 use datafusion::datasource::MemTable;
 use datafusion::prelude::*;
+use futures::StreamExt;
+use futures::stream::FuturesUnordered;
 use serde_json::Value;
+use tokio::sync::Semaphore;
 use tracing::{debug, info, warn};
 
 use crate::clickhouse::TIMESTAMP_FORMAT;
@@ -57,14 +60,24 @@ impl Pipeline {
         context: &PipelineContext,
         destination: &dyn Destination,
         progress: &ProgressNotifier,
+        max_concurrent_entities: usize,
     ) -> Result<(), HandlerError> {
-        let mut errors = Vec::new();
+        let semaphore = Semaphore::new(max_concurrent_entities.max(1));
+        let mut futures = FuturesUnordered::new();
 
         for plan in plans {
-            if let Err(err) = self.run_plan(plan, context, destination, progress).await {
-                self.metrics
-                    .record_pipeline_error(&plan.name, err.error_kind());
-                errors.push(format!("{}: {err}", plan.name));
+            futures.push(async {
+                let _permit = semaphore.acquire().await.expect("semaphore is not closed");
+                let result = self.run_plan(plan, context, destination, progress).await;
+                (&plan.name, result)
+            });
+        }
+
+        let mut errors = Vec::new();
+        while let Some((name, result)) = futures.next().await {
+            if let Err(err) = result {
+                self.metrics.record_pipeline_error(name, err.error_kind());
+                errors.push(format!("{name}: {err}"));
             }
         }
 
@@ -664,6 +677,7 @@ mod tests {
                 &test_context(),
                 &destination,
                 &ProgressNotifier::noop(),
+                3,
             )
             .await;
         assert!(result.is_ok());
@@ -692,6 +706,7 @@ mod tests {
                 &test_context(),
                 &destination,
                 &ProgressNotifier::noop(),
+                3,
             )
             .await;
 
@@ -718,6 +733,7 @@ mod tests {
                 &test_context(),
                 &destination,
                 &ProgressNotifier::noop(),
+                3,
             )
             .await;
 
@@ -796,6 +812,7 @@ mod tests {
                 &test_context(),
                 &MockDestination::new(),
                 &ProgressNotifier::noop(),
+                3,
             )
             .await;
 
@@ -835,6 +852,7 @@ mod tests {
                 &test_context(),
                 &MockDestination::new(),
                 &ProgressNotifier::noop(),
+                3,
             )
             .await;
         assert!(result.is_ok(), "should recover after halving: {result:?}");
@@ -873,6 +891,7 @@ mod tests {
                 &test_context(),
                 &MockDestination::new(),
                 &ProgressNotifier::noop(),
+                3,
             )
             .await;
 
@@ -907,6 +926,7 @@ mod tests {
                 &test_context(),
                 &destination,
                 &ProgressNotifier::noop(),
+                3,
             )
             .await;
 
