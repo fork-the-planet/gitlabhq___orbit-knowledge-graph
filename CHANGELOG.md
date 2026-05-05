@@ -1,3 +1,22 @@
+## [0.47.0](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.46.0...v0.47.0) (2026-05-05)
+
+### Features
+
+* **analytics:** add missing query event context fields ([a4b4ae3](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/a4b4ae31eb4fb46f1d7e6d6ccfd906c9df3e12cb)) by Bohdan Parkhomchuk
+* **indexer:** log per-batch timing breakdown in SDLC pipeline ([0cf401d](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/0cf401deaf3764f38e79a287768500298c240417)) by Jean-Gabriel Doyon
+* **ontology:** persist FK columns on node tables for query optimization ([a4457de](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/a4457dea93723bf11898462b2d10a54b1ee6de08)) by Michael Usachenko
+
+### Fixes
+
+* **e2e:** pin gitlab-workhorse digest ([458da78](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/458da78bc6bf70e2cca775cd8bc1fe55186c0484)) by Bohdan Parkhomchuk
+* **ontology:** align Project ability with source-code entities ([8881d91](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/8881d91fb432dc5434a1c768059d993f73025828)) by Michael Angelo Rivera
+
+### Other
+
+* bump schema version to 37 and regenerate DDL ([6e2d610](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/6e2d610b440577b13c1f0c8441f6ba269dfbbc53)) by Jean-Gabriel Doyon
+* **e2e:** bump gitlab pins ([3516955](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/35169557416c7003ba18ed2fef63397ecd3d6c8b)) by Bohdan Parkhomchuk
+* **e2e:** skip rebuild if image exists for SHA ([85f8250](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/85f8250855c9d081b6288dc9759f9d52c7179856)) by Bohdan Parkhomchuk
+
 ## [0.46.0](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.45.0...v0.46.0) (2026-05-04)
 
 ### Features
