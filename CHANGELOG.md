@@ -1,3 +1,18 @@
+## [0.48.0](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.47.0...v0.48.0) (2026-05-05)
+
+### Features
+
+* **compiler:** edge-first query lowering ([4b95801](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/4b95801bd2f9d8200f90e1032a4ac5aa80a749df)) by Michael Usachenko
+
+### Performance
+
+* **indexer:** reuse ClickHouse client across writes ([bca46b2](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/bca46b2d92f6577dd1e0cb24813dd5760aafe4e8)) by Jean-Gabriel Doyon
+
+### Other
+
+* **orbit-skill:** add missing query patterns and troubleshooting recipes ([8301e9b](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/8301e9bbd7ded2dc865590f353636becb33cfab3)) by Jean-Gabriel Doyon
+* **query:** add no-alias aggregation tests to catch default alias regressions ([761ebb8](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/761ebb8cc0874981bbe882fcdcfdadf803918dfd)) by Michael Usachenko
+
 ## [0.47.0](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.46.0...v0.47.0) (2026-05-05)
 
 ### Features
