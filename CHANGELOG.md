@@ -1,3 +1,27 @@
+## [0.50.0](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.49.0...v0.50.0) (2026-05-06)
+
+### Features
+
+* **code-graph:** add preliminary C++ language support ([05eac49](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/05eac49346160f299fe0087aeb3b948e99f56a5f)) by Michael Usachenko
+
+### Fixes
+
+* **indexer:** connect code branches in graph traversals ([642c65f](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/642c65fd156979a860a561a7d4ae8a5472ec315c)) by michaelangeloio
+
+### Performance
+
+* **query:** fix narrow CTE alias bug, CH settings, profiler improvements ([e8ebf71](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/e8ebf71f80fa64cf01d75af3ffb4c20e65588881)) by Michael Usachenko
+
+### Other
+
+* **deps:** update rust crate rustls to v0.23.40 ([f6ada5d](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/f6ada5d9890a419199ff48617625e1c0ee831925)) by GitLab Renovate Bot
+* **e2e:** nudge projects to dodge CH MV race ([28f1288](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/28f1288398e367ac7d670b106181fd2ffbd2acf1)) by Bohdan Parkhomchuk
+* **e2e:** run clickhouse on emptyDir ([a54a2a6](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/a54a2a68477a06ad25459cd3a4331d9bffad03ab)) by Bohdan Parkhomchuk
+* enable sccache in docker image ([fa42d78](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/fa42d783bbe30d2859e76073df722a967b84a790)) by Bohdan Parkhomchuk
+* **query:** remove v1 compiler and flatten v2 module structure ([aab5962](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/aab5962cea4978cae5481d79afe83ee2ea2ae0d9)) by Michael Usachenko
+* **release:** build and publish orbit CLI on tag ([2e57ab9](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/2e57ab9e2456c4995c2c675500f8664e9b85f1be)) by Bohdan Parkhomchuk
+* update docs linting tools and docs linting container image ([8f525a2](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/8f525a205ed9b140f09092e3e796e505bbaeec9b)) by Evan Read
+
 ## [0.49.0](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.48.0...v0.49.0) (2026-05-05)
 
 ### Features
