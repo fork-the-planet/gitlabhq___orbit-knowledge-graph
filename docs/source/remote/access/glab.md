@@ -34,9 +34,9 @@ query Orbit from the command line.
 
 Two top-level commands:
 
-- **`glab orbit remote`** - typed subcommands that call the Orbit Remote REST API.
+- `glab orbit remote`: typed subcommands that call the Orbit Remote REST API.
   Available in glab v1.94 or later.
-- **`glab orbit setup`** - one-command install of the Orbit skill and MCP config
+- `glab orbit setup`: one-command install of the Orbit skill and MCP config
   for your AI agent. Planned for a future glab release. Until it ships,
   [configure your MCP client manually](mcp.md#connect-your-mcp-client).
 
@@ -123,5 +123,5 @@ can branch on them without parsing stderr.
 
 ## Billing
 
-`glab orbit remote query` consumes **GitLab Credits** the same way as MCP queries.
+`glab orbit remote query` consumes GitLab Credits the same way as MCP queries.
 `status`, `schema`, `tools`, and `graph-status` calls are free.

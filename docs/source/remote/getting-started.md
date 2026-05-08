@@ -32,14 +32,13 @@ title: Get started with Orbit Remote
 ## Prerequisites
 
 - Owner role on the top-level group you want to enable Orbit on
-- GitLab.com Premium or Ultimate plan
 
 Orbit indexes top-level groups only. Subgroups and projects inherit indexing automatically.
 
 ## Step 1: Enable Orbit
 
 1. On the left sidebar, expand **Your Work**.
-1. Select **Orbit > Configuration**.
+1. Select **Orbit** > **Configuration**.
 1. Find your top-level group in the **Indexes** list.
 1. Toggle **Enable**.
 
@@ -65,9 +64,9 @@ Orbit Remote exposes the same graph through three surfaces. Pick the one that ma
 
 ### GitLab Duo Agent Platform (no setup required)
 
-Orbit is wired into GitLab Duo Agent Platform. The GitLab Duo Agent, Planner Agent, Security Analyst Agent, Data Analyst Agent, CI Expert Agent, and Duo Developer Flow call Orbit's `query_graph` and `get_graph_schema` tools automatically when a question is best answered by graph traversal. No tool selection or configuration required.
+Orbit is wired into GitLab Duo Agent Platform. The GitLab Duo Agent, Planner Agent, Security Analyst Agent, Data Analyst Agent, CI Expert Agent, and Developer Flow call Orbit's `query_graph` and `get_graph_schema` tools automatically when a question is best answered by graph traversal. No tool selection or configuration required.
 
-For example, file a work item asking to rename the `deploy_user` method. The Duo Developer Flow uses Orbit to identify every service that calls it, then drafts an MR that updates each one.
+For example, file a work item asking to rename the `deploy_user` method. The Developer Flow uses Orbit to identify every service that calls it, then drafts an MR that updates each one.
 
 GitLab Duo queries are zero-rated and do not consume GitLab Credits.
 

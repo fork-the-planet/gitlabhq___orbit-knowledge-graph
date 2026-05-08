@@ -86,25 +86,25 @@ check that Orbit is enabled on at least one of your groups.
 
 ## Billing
 
-Queries through MCP consume **GitLab Credits**. Each query call to `query_graph`
+Queries through MCP consume GitLab Credits. Each query call to `query_graph`
 uses credits from your GitLab subscription. `get_graph_schema` calls are free.
 
 ## Using the tools
 
 Once connected, instruct your AI agent to use the Orbit tools directly:
 
-**Discover the schema:**
+Discover the schema:
 > "Use `get_graph_schema` to show me what node types Orbit indexes."
 
-**Run a query:**
+Run a query:
 > "Use `query_graph` to find the 10 projects with the most open merge requests in
 > the `gitlab-org` group."
 
-**Blast radius analysis:**
+Blast radius analysis:
 > "Use Orbit to find all files in this project that import `AuthService` directly
 > or transitively."
 
-**Onboarding:**
+Onboarding:
 > "Use Orbit to map the key services in this group, their languages, and which
 > projects they depend on."
 
