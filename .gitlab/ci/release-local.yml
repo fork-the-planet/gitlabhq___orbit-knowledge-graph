@@ -54,8 +54,6 @@ local-cli-build-linux-arm64:
   needs: []
   variables:
     PLATFORM: darwin
-    # Pull a prebuilt libduckdb instead of compiling it; matches local dev defaults.
-    DUCKDB_DOWNLOAD_LIB: "1"
     RUST_VERSION: "1.95.0"
   before_script:
     # macos-15-xcode-16 ships with rustup but no toolchain pre-selected; the
