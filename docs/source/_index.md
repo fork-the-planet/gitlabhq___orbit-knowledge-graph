@@ -53,7 +53,7 @@ pipelines, vulnerabilities, and source code - into a managed ClickHouse graph.
 ```mermaid
 flowchart LR
     accTitle: Orbit Remote architecture
-    accDescr: SDLC data streams from GitLab via CDC to the Data Insights Platform, then to ClickHouse. Code is served over the Rails internal API. Orbit reads both sources, builds the graph in ClickHouse, and exposes it via REST API, MCP tools, and Duo Agent Platform.
+    accDescr: SDLC data streams from GitLab via CDC to the Data Insights Platform, then to ClickHouse. Code is served over the Rails internal API. Orbit reads both sources, builds the graph in ClickHouse, and exposes it via REST API, MCP tools, and GitLab Duo Agent Platform.
 
     subgraph GitLab["GitLab instance"]
         SDLC[SDLC data]
@@ -67,7 +67,7 @@ flowchart LR
 
     Orbit --> REST[REST API]
     Orbit --> MCP[MCP tools]
-    Orbit --> DAP[Duo Agent Platform]
+    Orbit --> DAP[GitLab Duo Agent Platform]
 ```
 
 Orbit Remote runs as a separate service and shares minimal load with your GitLab instance.
@@ -99,16 +99,13 @@ Orbit Remote.
 
 Orbit indexes two categories of data:
 
-**SDLC objects** from your GitLab instance:
-groups, projects, users, merge requests, pipelines, jobs, work items, milestones, labels,
-and security findings.
+- SDLC objects from your GitLab instance: groups, projects, users, merge requests, pipelines, jobs,
+  work items, milestones, labels, and security findings.
 
-**Source code** from your repositories:
-files, directories, function and class definitions, and cross-file import references.
-Code is indexed from the default branch only.
+- Source code from your repositories: files, directories, function and class definitions, and
+  cross-file import references. Code is indexed from the default branch only.
 
-**Supported languages for code indexing:**
-Ruby, Java, Kotlin, Python, TypeScript, JavaScript, Rust, Go, C#, C, C++
+Orbit indexes code in Ruby, Java, Kotlin, Python, TypeScript, JavaScript, Rust, Go, C#, C, and C++.
 
 [Full indexing coverage](remote/indexing.md) | [Schema reference](remote/schema.md)
 

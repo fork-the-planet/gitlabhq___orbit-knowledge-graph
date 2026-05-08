@@ -2,7 +2,7 @@
 stage: Analytics
 group: Knowledge Graph
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments
-description: Orbit running on GitLab-hosted infrastructure for Premium and Ultimate customers.
+description: Orbit running on GitLab-hosted infrastructure
 title: Orbit Remote
 ---
 
@@ -31,8 +31,8 @@ title: Orbit Remote
 
 Orbit Remote runs on GitLab-hosted infrastructure. Enable it on a top-level group and it automatically indexes your entire SDLC and code - groups, projects, users, merge requests, pipelines, vulnerabilities, and source code - into a ClickHouse property graph.
 
-- **Indexes:** Full SDLC + code graph
-- **Storage:** ClickHouse (managed, no setup required)
+- Indexes: Full SDLC + code graph
+- Storage: ClickHouse (managed, no setup required)
 
 [Get started with Orbit Remote](getting-started.md)
 
