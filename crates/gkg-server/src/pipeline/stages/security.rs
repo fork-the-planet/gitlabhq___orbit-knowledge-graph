@@ -16,9 +16,11 @@ impl PipelineStage for SecurityStage {
         ctx: &mut QueryPipelineContext,
         obs: &mut dyn PipelineObserver,
     ) -> Result<Self::Output, PipelineError> {
-        let claims = ctx.server_extensions.get::<Claims>().ok_or_else(|| {
-            PipelineError::Security("Claims not found in server_extensions".into())
-        })?;
+        let claims = ctx
+            .server_extensions
+            .get::<Claims>()
+            .ok_or_else(|| PipelineError::Security("Claims not found in server_extensions".into()))
+            .inspect_err(|e| obs.record_error(e))?;
         let result = build_security_context(claims)
             .map_err(PipelineError::Security)
             .inspect_err(|e| obs.record_error(e))?;

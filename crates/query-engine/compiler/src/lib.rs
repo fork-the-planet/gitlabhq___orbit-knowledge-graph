@@ -115,7 +115,10 @@ pub fn compile(
     let env = SecureEnv::new(Arc::new(ontology.clone()), ctx.clone());
     let state = QueryState::from_json(json_input);
     let pipeline = pipelines::clickhouse().seal();
-    pipeline.execute(state, &env)?.into_output().count_err()
+    pipeline
+        .execute(state, &env)
+        .and_then(|s| s.into_output())
+        .count_err()
 }
 
 /// Compile from a pre-built `Input`. Used for internal query types (Hydration)
@@ -145,8 +148,8 @@ pub fn compile_input(
 
     pipeline
         .seal()
-        .execute(state, &env)?
-        .into_output()
+        .execute(state, &env)
+        .and_then(|s| s.into_output())
         .count_err()
 }
 
@@ -170,7 +173,10 @@ pub fn compile_local(json_input: &str, ontology: &Ontology) -> Result<CompiledQu
     let env = LocalEnv::local(Arc::new(ont));
     let state = DuckDbState::from_json(json_input);
     let pipeline = pipelines::duckdb().seal();
-    pipeline.execute(state, &env)?.into_output().count_err()
+    pipeline
+        .execute(state, &env)
+        .and_then(|s| s.into_output())
+        .count_err()
 }
 
 /// Compile a pre-built Input into DuckDB-dialect SQL for local hydration.
@@ -188,7 +194,10 @@ pub fn compile_local_input(input: Input, ontology: &Ontology) -> Result<Compiled
     let env = LocalEnv::local(Arc::new(ont));
     let state = DuckDbState::from_input(input);
     let pipeline = pipelines::duckdb_hydration().seal();
-    pipeline.execute(state, &env)?.into_output().count_err()
+    pipeline
+        .execute(state, &env)
+        .and_then(|s| s.into_output())
+        .count_err()
 }
 
 // Pipeline presets are in `pipelines.rs`.
@@ -200,6 +209,47 @@ mod tests {
 
     fn security_ctx() -> SecurityContext {
         SecurityContext::new(1, vec!["1/".to_string()]).expect("valid context")
+    }
+
+    /// Regression: pipeline-execution errors must reach `count_err`. Before
+    /// this fix the body was `pipeline.execute(...)?.into_output().count_err()`,
+    /// where the `?` propagated `QueryError` past `count_err`, so the counter
+    /// was never incremented. Asserting the test-only `COUNT_ERR_HITS` side
+    /// channel ensures the regression cannot return undetected; asserting on
+    /// the error variant alone would have passed against the buggy code.
+    #[test]
+    fn malformed_query_increments_compiler_rejected() {
+        use std::sync::atomic::Ordering;
+        let ontology = Ontology::load_embedded().expect("ontology must load");
+        let before = crate::metrics::COUNT_ERR_HITS.load(Ordering::Relaxed);
+        let err = compile("not json", &ontology, &security_ctx()).expect_err("must reject");
+        let after = crate::metrics::COUNT_ERR_HITS.load(Ordering::Relaxed);
+        assert!(
+            matches!(err, crate::error::QueryError::Parse(_)),
+            "expected Parse, got: {err:?}"
+        );
+        assert!(
+            after > before,
+            "count_err must run on parse errors (before={before}, after={after})"
+        );
+    }
+
+    #[test]
+    fn allowlist_rejected_query_increments_compiler_rejected() {
+        use std::sync::atomic::Ordering;
+        let ontology = Ontology::load_embedded().expect("ontology must load");
+        let query = r#"{"query_type":"traversal","node":{"id":"x","entity":"NotARealEntity","columns":["id"]},"limit":1}"#;
+        let before = crate::metrics::COUNT_ERR_HITS.load(Ordering::Relaxed);
+        let err = compile(query, &ontology, &security_ctx()).expect_err("must reject");
+        let after = crate::metrics::COUNT_ERR_HITS.load(Ordering::Relaxed);
+        assert!(
+            !matches!(err, crate::error::QueryError::PipelineInvariant(_)),
+            "compile errors from internal passes must surface as their own variant, not PipelineInvariant; got: {err:?}"
+        );
+        assert!(
+            after > before,
+            "count_err must run on allowlist rejections (before={before}, after={after})"
+        );
     }
 
     #[test]
