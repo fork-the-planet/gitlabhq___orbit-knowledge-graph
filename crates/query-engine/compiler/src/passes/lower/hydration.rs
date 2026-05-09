@@ -15,6 +15,37 @@ use crate::error::{QueryError, Result};
 use crate::passes::plan::HydrationNodePlan;
 use crate::passes::shared::dedup_subquery;
 
+const ARRAY_EXISTS_PATH_THRESHOLD: usize = 256;
+
+#[derive(Clone, Copy)]
+struct HydrationPathFilterContext {
+    array_exists_path_threshold: usize,
+}
+
+impl Default for HydrationPathFilterContext {
+    fn default() -> Self {
+        Self {
+            array_exists_path_threshold: ARRAY_EXISTS_PATH_THRESHOLD,
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum HydrationPathFilterShape {
+    OrStartsWith,
+    ArrayExists,
+}
+
+impl HydrationPathFilterContext {
+    fn shape_for(self, is_dynamic: bool, path_count: usize) -> HydrationPathFilterShape {
+        if is_dynamic && path_count > self.array_exists_path_threshold {
+            HydrationPathFilterShape::ArrayExists
+        } else {
+            HydrationPathFilterShape::OrStartsWith
+        }
+    }
+}
+
 // ─── Emit ────────────────────────────────────────────────────────────────────
 
 pub fn emit_hydration(nodes: &[HydrationNodePlan], limit: u32, is_dynamic: bool) -> Result<Node> {
@@ -98,21 +129,11 @@ fn emit_arm(node: &HydrationNodePlan, is_dynamic: bool) -> Result<Query> {
 ///    in the set. Keeps the most specific (deepest) paths for maximum
 ///    granule selectivity. Safe because `id IN (...)` is the correctness
 ///    guarantee — TP is purely a scan optimizer.
-/// 2. **Shape dispatch:**
-///    - **Dynamic hydration (Neighbors, PathFinding):**
-///      `arrayExists(p -> startsWith(alias.traversal_path, p), [paths])`.
-///      Constant AST depth regardless of path count. The `Group` neighbors
-///      502 was an OR-of-`startsWith` that fanned out to hundreds of paths
-///      and overran ClickHouse `max_parser_depth=1000` (`Code 306
-///      TOO_DEEP_RECURSION`). Dynamic hydration discovers paths at runtime
-///      and routinely sees set sizes that hit this ceiling.
-///    - **Static hydration (Traversal, Aggregation):**
-///      `startsWith(tp, p1) OR startsWith(tp, p2) OR …`. The path set is
-///      bounded to a project's worth of namespaces (a handful), so the
-///      AST stays well under the parser limit and the per-leaf
-///      `startsWith` calls each keep an independent PK pushdown into the
-///      `traversal_path`-prefixed sort key. Empirically the per-leaf shape
-///      wins on this workload.
+/// 2. **Small path sets:** balanced OR of `startsWith` calls. This keeps the
+///    primary-key pruning that makes low-fanout hydration fast.
+/// 3. **Large dynamic path sets:** `arrayExists(path -> startsWith(...))`.
+///    This avoids ClickHouse parser-depth failures when dynamic hydration
+///    discovers hundreds of traversal paths.
 fn traversal_path_filter(alias: &str, paths: &[String], is_dynamic: bool) -> Option<Expr> {
     if paths.is_empty() {
         return None;
@@ -121,15 +142,15 @@ fn traversal_path_filter(alias: &str, paths: &[String], is_dynamic: bool) -> Opt
     if leaves.is_empty() {
         return None;
     }
-    if is_dynamic {
-        Some(array_exists_starts_with(alias, &leaves))
-    } else {
-        or_starts_with(alias, &leaves)
+    let ctx = HydrationPathFilterContext::default();
+    match ctx.shape_for(is_dynamic, leaves.len()) {
+        HydrationPathFilterShape::OrStartsWith => or_starts_with(alias, &leaves),
+        HydrationPathFilterShape::ArrayExists => Some(array_exists_starts_with(alias, &leaves)),
     }
 }
 
 fn or_starts_with(alias: &str, paths: &[String]) -> Option<Expr> {
-    Expr::or_all(paths.iter().map(|tp| Some(starts_with_path(alias, tp))))
+    or_balanced(paths.iter().map(|tp| starts_with_path(alias, tp)).collect())
 }
 
 fn starts_with_path(alias: &str, tp: &str) -> Expr {
@@ -165,6 +186,22 @@ fn array_exists_starts_with(alias: &str, paths: &[String]) -> Expr {
             ),
         ],
     )
+}
+
+fn or_balanced(mut exprs: Vec<Expr>) -> Option<Expr> {
+    match exprs.len() {
+        0 => None,
+        1 => exprs.pop(),
+        _ => {
+            let right = exprs.split_off(exprs.len() / 2);
+            let left = exprs;
+            Some(Expr::binary(
+                Op::Or,
+                or_balanced(left)?,
+                or_balanced(right)?,
+            ))
+        }
+    }
 }
 
 /// Drop any path that is a strict prefix of another path in the set.
@@ -238,16 +275,16 @@ mod tests {
     }
 
     #[test]
-    fn dynamic_single_tp_emits_array_exists_starts_with() {
+    fn dynamic_single_tp_emits_starts_with() {
         let node = emit_dynamic(&[plan(vec!["title"], vec![1, 2], vec!["1/9970/"])], 10);
         let sql = render(&node);
         assert!(
-            sql.contains("arrayExists"),
-            "dynamic single TP should emit arrayExists: {sql}"
+            sql.contains("startsWith"),
+            "dynamic single TP should emit startsWith: {sql}"
         );
         assert!(
-            sql.contains("startsWith"),
-            "lambda body should call startsWith: {sql}"
+            !sql.contains("arrayExists"),
+            "small dynamic path set should not emit arrayExists: {sql}"
         );
         assert!(
             sql.contains("traversal_path"),
@@ -256,7 +293,7 @@ mod tests {
     }
 
     #[test]
-    fn dynamic_multiple_tps_emit_single_array_exists() {
+    fn dynamic_multiple_tps_emit_or_disjunction() {
         let node = emit_dynamic(
             &[plan(
                 vec!["title"],
@@ -268,17 +305,17 @@ mod tests {
         let sql = render(&node);
         let starts_with_count = sql.matches("startsWith").count();
         assert_eq!(
-            starts_with_count, 1,
-            "dynamic constant AST depth: one startsWith inside the lambda: {sql}"
+            starts_with_count, 2,
+            "two leaf TPs should produce two startsWith calls: {sql}"
         );
-        let array_exists_count = sql.matches("arrayExists").count();
-        assert_eq!(
-            array_exists_count, 1,
-            "dynamic should emit a single arrayExists wrapping the path array: {sql}"
+        assert!(sql.contains(" OR "), "two TPs should use OR: {sql}");
+        assert!(
+            !sql.contains("arrayExists"),
+            "small dynamic path set should use OR not arrayExists: {sql}"
         );
         assert!(
-            !sql.contains(" OR "),
-            "dynamic should not emit an OR disjunction: {sql}"
+            sql.contains("traversal_path"),
+            "should reference traversal_path column: {sql}"
         );
     }
 
@@ -327,6 +364,76 @@ mod tests {
     }
 
     #[test]
+    fn large_dynamic_tp_sets_emit_array_exists() {
+        let paths: Vec<String> = (0..=ARRAY_EXISTS_PATH_THRESHOLD)
+            .map(|id| format!("1/9970/{id}/"))
+            .collect();
+        let plan = HydrationNodePlan {
+            alias: "hydrate".into(),
+            table: "gl_merge_request".into(),
+            entity: "MergeRequest".into(),
+            id_property: "id".into(),
+            node_ids: vec![1],
+            columns: vec!["title".into()],
+            traversal_paths: paths.clone(),
+        };
+
+        let node = emit_hydration(&[plan], 10, true).unwrap();
+        let (sql, params) = render_with_params(&node);
+
+        assert!(
+            sql.contains("arrayExists"),
+            "large dynamic TP sets should use arrayExists: {sql}"
+        );
+        assert_eq!(
+            sql.matches("startsWith").count(),
+            1,
+            "arrayExists should keep one startsWith in the lambda: {sql}"
+        );
+        let array_params: Vec<_> = params
+            .values()
+            .filter_map(|p| match &p.value {
+                serde_json::Value::Array(items) => Some(items),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            array_params.len(),
+            1,
+            "expected one traversal-path array param"
+        );
+        assert_eq!(array_params[0].len(), paths.len());
+    }
+
+    #[test]
+    fn large_static_tp_sets_emit_or() {
+        let paths: Vec<String> = (0..=ARRAY_EXISTS_PATH_THRESHOLD)
+            .map(|id| format!("1/9970/{id}/"))
+            .collect();
+        let plan = HydrationNodePlan {
+            alias: "hydrate".into(),
+            table: "gl_merge_request".into(),
+            entity: "MergeRequest".into(),
+            id_property: "id".into(),
+            node_ids: vec![1],
+            columns: vec!["title".into()],
+            traversal_paths: paths,
+        };
+
+        let node = emit_hydration(&[plan], 10, false).unwrap();
+        let sql = render(&node);
+
+        assert!(
+            !sql.contains("arrayExists"),
+            "static TP sets should keep OR startsWith: {sql}"
+        );
+        assert_eq!(
+            sql.matches("startsWith").count(),
+            ARRAY_EXISTS_PATH_THRESHOLD + 1
+        );
+    }
+
+    #[test]
     fn dynamic_no_tp_omits_path_filter() {
         let node = emit_dynamic(&[plan(vec!["title"], vec![1, 2], vec![])], 10);
         let sql = render(&node);
@@ -354,7 +461,7 @@ mod tests {
     fn dynamic_tp_filter_precedes_id_filter() {
         let node = emit_dynamic(&[plan(vec!["title"], vec![1], vec!["1/9970/"])], 10);
         let sql = render(&node);
-        let tp_pos = sql.find("arrayExists").unwrap();
+        let tp_pos = sql.find("startsWith").unwrap();
         let in_pos = sql.find(" IN ").or_else(|| sql.find(" = ")).unwrap();
         assert!(
             tp_pos < in_pos,
@@ -376,34 +483,20 @@ mod tests {
 
     #[test]
     fn dynamic_leaf_pruning_drops_broad_prefix() {
-        // 1/9970/ is a prefix of 1/9970/100/, should be dropped from the array
+        // 1/9970/ is a prefix of 1/9970/100/, should be dropped from the OR
         let node = emit_dynamic(
             &[plan(vec!["title"], vec![1], vec!["1/9970/", "1/9970/100/"])],
             10,
         );
-        let (sql, params) = render_with_params(&node);
-        assert!(
-            sql.contains("arrayExists"),
-            "leaf set should still emit arrayExists: {sql}"
-        );
-        // Verify the array parameter contains only the leaf path.
-        let array_params: Vec<_> = params
-            .values()
-            .filter_map(|p| match &p.value {
-                serde_json::Value::Array(items) => Some(items),
-                _ => None,
-            })
-            .collect();
+        let sql = render(&node);
         assert_eq!(
-            array_params.len(),
+            sql.matches("startsWith").count(),
             1,
-            "expected exactly one Array param for traversal paths: {params:?}"
+            "ancestor should be pruned, only one startsWith for the leaf: {sql}"
         );
-        let paths: Vec<&str> = array_params[0].iter().filter_map(|v| v.as_str()).collect();
-        assert_eq!(
-            paths,
-            vec!["1/9970/100/"],
-            "ancestor pruned, only leaf survives in array param"
+        assert!(
+            !sql.contains("arrayExists"),
+            "small dynamic leaf set should not emit arrayExists: {sql}"
         );
     }
 
