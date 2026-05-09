@@ -4,7 +4,7 @@ use std::time::Instant;
 
 use clickhouse_client::ArrowClickHouseClient;
 use gkg_server_config::ProfilingConfig;
-use query_engine::compiler::{HydrationPlan, InputNode, compile_input};
+use query_engine::compiler::{HydrationPlan, InputNode, QueryType, compile_input};
 
 use query_engine::pipeline::{
     PipelineError, PipelineObserver, PipelineStage, QueryPipelineContext,
@@ -61,6 +61,11 @@ impl HydrationStage {
 
     /// Compile a `QueryType::Hydration` input and execute the single UNION ALL
     /// query against ClickHouse. Shared by both static and dynamic hydration.
+    ///
+    /// The `traversal_path` filter shape (`arrayExists` vs OR-of-`startsWith`)
+    /// is selected by the compiler from the originating query type, read off
+    /// the pipeline ctx (`ctx.compiled.input.query_type`) here and stamped on
+    /// `Input.hydration_dynamic` before compile.
     async fn execute_hydration(
         ctx: &QueryPipelineContext,
         nodes: Vec<InputNode>,
@@ -77,7 +82,11 @@ impl HydrationStage {
             .cloned()
             .unwrap_or_default();
 
-        let hydration_input = hydration_helpers::build_hydration_input(nodes, total_ids);
+        let mut hydration_input = hydration_helpers::build_hydration_input(nodes, total_ids);
+        hydration_input.hydration_dynamic = matches!(
+            ctx.compiled()?.input.query_type,
+            QueryType::Neighbors | QueryType::PathFinding
+        );
 
         let compiled = compile_input(hydration_input, &ctx.ontology, ctx.security_context()?)
             .map_err(|e| PipelineError::Compile {
