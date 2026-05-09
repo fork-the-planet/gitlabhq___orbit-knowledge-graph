@@ -1,3 +1,28 @@
+## [0.55.0](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.54.0...v0.55.0) (2026-05-09)
+
+### Features
+
+* **code-graph:** ruby metaprogramming and Rails DSL resolution ([5773cda](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/5773cda73c9ab3547cdd861b814aa8d3b4d9b5e5)) by Michael Usachenko
+* **ontology:** surface property descriptions in schema endpoint ([9067bef](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/9067befc6ff6013349f3da6f689c6ae0f77f008a)) by Jean-Gabriel Doyon
+* **orbit-local:** add `orbit sql` for raw DuckDB queries ([7b57a7a](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/7b57a7a4a82a38fc8f87afc6830ea940bf5803fa)) by Michael Angelo Rivera
+
+### Fixes
+
+* **ci:** tag-pipeline reliability for publish and proto jobs ([4a76577](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/4a765776680158f4146692da384c504669135e6e)) by Bohdan Parkhomchuk
+* **compiler:** allow scoped traversal_path filters ([bb7df0a](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/bb7df0a6307fbea1eaf378b53bfce7142a9c489d)) by Michael Angelo Rivera
+* **compiler:** use arrayExists for hydration traversal_path filter ([8599a6c](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/8599a6ca8d22e3f9f75aca79dac2bff5cf7d7023)) by Michael Angelo Rivera
+* **compiler:** use hybrid hydration path filters ([65485d1](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/65485d1dd10876a7b8698a02d8677c4de1237514)) by michaelangeloio
+* **observability:** count every compile error and pipeline failure ([c5eca5c](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/c5eca5c46e7e3b34220e89e8a5643ac32b7ba0a9)) by Michael Angelo Rivera
+* **orbit-local:** use embedded ontology for index and query ([f5ffe73](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/f5ffe73c97a00b001be33557a15ecb667db1aac3)) by Bohdan Parkhomchuk
+* **schema:** require group_by for multi-node aggregations ([d0cf4f3](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/d0cf4f3cfb05663c0e188445c3a68d0b57584c1f)) by michaelangeloio
+
+### Other
+
+* drop dashboards-check from pre-commit hook ([c107d03](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/c107d037a4ed57cd2fa562444b0b73b871626dea)) by Michael Angelo Rivera
+* drop doc-lint from pre-commit hook ([34c80f8](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/34c80f87c76ac07fb964490c9ef7ae42485aeb68)) by Michael Angelo Rivera
+* **e2e:** bump gitlab/siphon/gkg pins ([29fe58c](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/29fe58c76bca22903237f4b7952edf2a617121d7)) by Bohdan Parkhomchuk
+* **ontology:** clarify old_path description for MergeRequestDiffFile ([b793ade](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/b793adeaa3402529150485e5bb2a24b3ac4a2d77)) by Michael Usachenko
+
 ## [0.54.0](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.53.0...v0.54.0) (2026-05-09)
 
 ### Features
