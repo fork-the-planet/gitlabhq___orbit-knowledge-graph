@@ -1,3 +1,19 @@
+## [0.57.0](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.56.1...v0.57.0) (2026-05-11)
+
+### Features
+
+* **billing:** add observability metrics and tracing ([04ba887](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/04ba887a13958db77405030ef2c2ad3e3e17c6a1)) by Sharmad Nachnolkar
+
+### Fixes
+
+* **compiler:** drop duplicate alias in neighbors lowering for non-default-PK center nodes ([1dfdfe1](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/1dfdfe1998939d8f7f2210ae05963ec67aec2581)) by Michael Angelo Rivera
+
+### Other
+
+* **deps:** update rust crate arrow-ipc to v58.2.0 ([957a181](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/957a181acb11687f5a9d28e930e5854b9e4f7624)) by GitLab Renovate Bot
+* **deps:** update rust crate parquet to v58.2.0 ([cbc042e](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/cbc042eefc501ecd1a9624f7956226bfb5c26e18)) by GitLab Renovate Bot
+* **deps:** update rust crate tokio to v1.52.2 ([86521bc](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/86521bc60bd5c000a11cb59abe313c2eba4e9c61)) by GitLab Renovate Bot
+
 ## [0.56.1](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.56.0...v0.56.1) (2026-05-11)
 
 ### Fixes
