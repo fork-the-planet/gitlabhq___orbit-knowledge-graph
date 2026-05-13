@@ -1,7 +1,7 @@
 ---
 name: orbit
-description: Query the GitLab Knowledge Graph (Orbit) via the typed `glab orbit remote` CLI subcommands. Use for code-structure questions (who calls this function, where is this symbol defined), cross-project dependency and blast-radius analysis, merge-request and contributor queries, and any question answerable by traversing GitLab's unified entity graph (projects, users, MRs, issues, pipelines, files, definitions, vulnerabilities).
-version: 0.5.0
+description: Query the GitLab Knowledge Graph (Orbit) via `glab orbit remote` CLI subcommands or run a local copy with `glab orbit local`. Use for code-structure questions (who calls this function, where is this symbol defined), cross-project dependency and blast-radius analysis, merge-request and contributor queries, and any question answerable by traversing GitLab's unified entity graph (projects, users, MRs, issues, pipelines, files, definitions, vulnerabilities).
+version: 0.6.0
 license: MIT
 metadata:
   audience: developers
@@ -75,6 +75,31 @@ and `max_hops` are capped at 3 server-side.
 | Full DSL reference | [`references/query_language.md`](references/query_language.md) |
 | Paste-ready bodies per `query_type` | [`references/recipes.md`](references/recipes.md) |
 | CLI exit codes (1-5) and common errors | [`references/troubleshooting.md`](references/troubleshooting.md) |
+| `glab orbit local` install, update, config, and usage | [`references/local_cli.md`](references/local_cli.md) |
+
+## Local CLI (glab orbit local)
+
+`glab orbit local` downloads and runs a managed Orbit CLI binary for indexing
+and querying a local copy of the Knowledge Graph. Key commands:
+
+```bash
+glab orbit local             # install (first run) and run
+glab orbit local --install   # install only
+glab orbit local --update    # update to latest compatible version
+```
+
+**Supported platforms:** macOS and Linux only (x86_64/aarch64; no Windows).
+
+### When to prefer `glab orbit local` vs `glab orbit remote`
+
+| Scenario | Recommended |
+|---|---|
+| Query the production GitLab Knowledge Graph | `glab orbit remote` |
+| Index a local repository for offline analysis | `glab orbit local` |
+| Use a custom or pre-built binary instead of the managed one | Set `orbit_local_binary_path` / `GLAB_ORBIT_LOCAL_BINARY_PATH` |
+
+See [`references/local_cli.md`](references/local_cli.md) for full config keys,
+pass-through args, and usage examples.
 
 ## Contributing
 
