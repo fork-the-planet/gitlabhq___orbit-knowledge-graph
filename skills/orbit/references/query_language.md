@@ -25,10 +25,6 @@ title: Orbit query language
 > For more information, see the history.
 > This feature is available for testing, but not ready for production use.
 
-<!-- -->
-
-> [!disclaimer]
-
 Use the Orbit query language when you need GitLab data as a graph instead of a
 flat API response. A query is a JSON object. It names the entities to match,
 the relationships to follow, and the properties to return.
@@ -275,6 +271,47 @@ Find merged merge requests in a project:
   "limit": 25
 }
 ```
+
+Find every pipeline that ran for one merge request. Always filter
+`Pipeline.source = "merge_request_event"` to match what the merge request's
+**Pipelines** tab, the REST `/merge_requests/:iid/pipelines` endpoint, and
+the GraphQL `mergeRequest.pipelines` connection return:
+
+```json
+{
+  "query_type": "traversal",
+  "node": {
+    "id": "p",
+    "entity": "Pipeline",
+    "filters": {
+      "merge_request_id": {"op": "eq", "value": 482908721},
+      "source": {"op": "eq", "value": "merge_request_event"}
+    },
+    "columns": ["id", "status", "source", "sha", "ref", "created_at"]
+  },
+  "order_by": {"node": "p", "property": "created_at", "direction": "DESC"},
+  "limit": 100
+}
+```
+
+`merge_request_id` is the merge request's internal numeric `id`, not the
+project-scoped `iid`. Look it up first with a `MergeRequest` traversal that
+filters by `iid` and `project_id`, then plug the `id` into the query above.
+
+Both `Pipeline.merge_request_id` and the `MergeRequest --TRIGGERED-->
+Pipeline` edge link an MR to every CI pipeline spawned in its context,
+including the downstream child pipelines (`source = "parent_pipeline"`)
+that the top-level MR pipelines trigger. Without the
+`source = "merge_request_event"` filter, the result over-counts by a large
+factor on any MR that uses parent-child pipeline fan-out, and does not
+match the MR UI or the REST and GraphQL definitions of "pipelines for this
+MR". Apply the same filter when traversing
+`MergeRequest --TRIGGERED--> Pipeline` in a multi-node query.
+
+`MergeRequest --HAS_HEAD_PIPELINE--> Pipeline` is a different edge. It
+points to the single most recent pipeline running against the tip of the
+merge request's source branch. Use it for "what is currently running", not
+for pipeline history.
 
 ## Aggregation
 

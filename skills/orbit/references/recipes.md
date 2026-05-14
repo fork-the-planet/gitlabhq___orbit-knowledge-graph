@@ -75,6 +75,112 @@ Find up to 5 projects whose `full_path` contains `gitlab-org/cli`:
 }
 ```
 
+## Pipelines that ran for one merge request
+
+> **Always filter `Pipeline.source = "merge_request_event"` for this question.**
+> The graph also stores the downstream child pipelines those top-level MR
+> pipelines triggered (`source = "parent_pipeline"`). Both
+> `Pipeline.merge_request_id` and the `MergeRequest --TRIGGERED--> Pipeline`
+> edge return parents **and** children. Without the `source` filter you
+> will over-count by a factor of 5-10× and the answer will not match the
+> MR's **Pipelines** tab, the REST `/merge_requests/:iid/pipelines`
+> endpoint, or the GraphQL `mergeRequest.pipelines` connection.
+> `MergeRequest --HAS_HEAD_PIPELINE--> Pipeline` is unrelated: it points
+> to the one current head pipeline, useful for "what is running now" but
+> not for history.
+
+The canonical query is single-node and filters `Pipeline.merge_request_id`
+plus `source`. `merge_request_id` is the MR's internal numeric `id` (not the
+project-scoped `iid`); look it up first with the
+[MR-by-IID recipe](#look-up-a-merge-request-by-iid) and reuse the returned
+`id`.
+
+```json
+{
+  "query": {
+    "query_type": "traversal",
+    "node": {
+      "id": "p", "entity": "Pipeline",
+      "filters": {
+        "merge_request_id": {"op": "eq", "value": 482908721},
+        "source": {"op": "eq", "value": "merge_request_event"}
+      },
+      "columns": ["id", "status", "source", "sha", "ref", "created_at"]
+    },
+    "order_by": {"node": "p", "property": "created_at", "direction": "DESC"},
+    "limit": 100
+  }
+}
+```
+
+Apply the same filter when narrowing by status — for example, "failed
+pipelines for this MR":
+
+```json
+{
+  "query": {
+    "query_type": "traversal",
+    "node": {
+      "id": "p", "entity": "Pipeline",
+      "filters": {
+        "merge_request_id": {"op": "eq", "value": 482908721},
+        "source": {"op": "eq", "value": "merge_request_event"},
+        "status": {"op": "eq", "value": "failed"}
+      },
+      "columns": ["id", "status", "sha", "ref", "failure_reason", "duration", "created_at"]
+    },
+    "order_by": {"node": "p", "property": "created_at", "direction": "DESC"},
+    "limit": 100
+  }
+}
+```
+
+Count by status with a single-node `aggregation` (keep the node count at
+one — adding `MergeRequest` or `Project` as extra nodes can change the
+underlying join shape and inflate the count):
+
+```json
+{
+  "query": {
+    "query_type": "aggregation",
+    "nodes": [
+      {"id": "p", "entity": "Pipeline",
+       "filters": {
+         "merge_request_id": {"op": "eq", "value": 482908721},
+         "source": {"op": "eq", "value": "merge_request_event"}
+       }}
+    ],
+    "group_by": [{"kind": "property", "node": "p", "property": "status", "alias": "status"}],
+    "aggregations": [{"function": "count", "target": "p", "alias": "pipeline_count"}],
+    "aggregation_sort": {"column": "pipeline_count", "direction": "DESC"},
+    "limit": 20
+  }
+}
+```
+
+If you only have the MR's `iid` and not its internal `id`, the equivalent
+two-node form via `TRIGGERED` works — still with the `source` filter on the
+Pipeline node:
+
+```json
+{
+  "query": {
+    "query_type": "traversal",
+    "nodes": [
+      {"id": "mr", "entity": "MergeRequest",
+       "filters": {"iid": {"op": "eq", "value": 235291},
+                   "project_id": {"op": "eq", "value": 278964}}},
+      {"id": "p",  "entity": "Pipeline",
+       "filters": {"source": {"op": "eq", "value": "merge_request_event"}},
+       "columns": ["id", "status", "sha", "created_at"]}
+    ],
+    "relationships": [{"type": "TRIGGERED", "from": "mr", "to": "p"}],
+    "order_by": {"node": "p", "property": "created_at", "direction": "DESC"},
+    "limit": 100
+  }
+}
+```
+
 ## `traversal` (multi-node) — start from nodes, follow relationships
 
 List opened merge requests and their authors. Requires at least two nodes and
