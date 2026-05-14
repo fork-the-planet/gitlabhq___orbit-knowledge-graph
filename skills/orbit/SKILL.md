@@ -1,7 +1,7 @@
 ---
 name: orbit
 description: Query the GitLab Knowledge Graph (Orbit) via `glab orbit remote` CLI subcommands or run a local copy with `glab orbit local`. Use for code-structure questions (who calls this function, where is this symbol defined), cross-project dependency and blast-radius analysis, merge-request and contributor queries, and any question answerable by traversing GitLab's unified entity graph (projects, users, MRs, issues, pipelines, files, definitions, vulnerabilities).
-version: 0.6.0
+version: 0.7.0
 license: MIT
 metadata:
   audience: developers
@@ -67,6 +67,30 @@ shorthand equality (`{"state": "opened"}`) or the operator form
 `traversal` use `node` (singular); multi-node `traversal`, `aggregation`,
 and `path_finding` use `nodes` (array) plus `relationships`. `max_depth`
 and `max_hops` are capped at 3 server-side.
+
+## Common pitfalls
+
+Read [`references/recipes.md`](references/recipes.md) before constructing a
+query — the same question often has one canonical paste-ready shape and
+several wrong-looking-correct shapes. Two traps come up often:
+
+- **"Pipelines for a merge request" requires `Pipeline.source =
+  "merge_request_event"`.** The graph links every CI pipeline spawned in the
+  context of an MR to that MR — including downstream child pipelines
+  (`source = "parent_pipeline"`) that the top-level MR pipelines triggered.
+  Both `Pipeline.merge_request_id` and the `MergeRequest --TRIGGERED-->
+  Pipeline` edge return parents *and* children. Apply the
+  `source = "merge_request_event"` filter (or use the canonical recipe in
+  [`recipes.md`](references/recipes.md#pipelines-that-ran-for-one-merge-request))
+  to match what the MR **Pipelines** tab, the REST
+  `/merge_requests/:iid/pipelines` endpoint, and the GraphQL
+  `mergeRequest.pipelines` connection return.
+- **Prefer single-node queries when you can bound the target entity
+  directly.** Adding extra nodes/relationships only to "anchor" the query
+  (for example, joining `Project` + `MergeRequest` + `Pipeline` when you
+  already know the MR's `merge_request_id`) can change the row shape in
+  ways that affect `aggregation` counts. When `recipes.md` shows a
+  single-node form for your question, use it.
 
 ## References
 
