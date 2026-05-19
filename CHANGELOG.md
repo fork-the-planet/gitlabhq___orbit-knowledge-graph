@@ -1,3 +1,9 @@
+## [0.59.1](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.59.0...v0.59.1) (2026-05-19)
+
+### Fixes
+
+* **ci:** restore OIDC setup for code-sign job ([e03d21f](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/e03d21f8a274b0ba1065c2cfea71e0fee1d248b7)) by Bohdan Parkhomchuk
+
 ## [0.59.0](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.58.0...v0.59.0) (2026-05-19)
 
 ### Features
