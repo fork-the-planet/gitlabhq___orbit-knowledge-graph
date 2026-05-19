@@ -1,3 +1,28 @@
+## [0.59.0](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.58.0...v0.59.0) (2026-05-19)
+
+### Features
+
+* **analytics:** extract coding agent from client User-Agent header ([e6a11ef](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/e6a11ef3a1cd5092e10e77a8083cf72768647894)) by Jean-Gabriel Doyon
+* **install:** add Windows install.ps1 ([73c0c3d](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/73c0c3da44ec6aea4b4ad796d29ef6d2a2899552)) by Bohdan Parkhomchuk
+
+### Fixes
+
+* **deps:** update astral-tokio-tar to v0.6.2 (RUSTSEC-2026-0145) ([e7731e9](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/e7731e965560e1732bbb06731eed1ca6fcae600b)) by Jean-Gabriel Doyon
+* **query:** include correlation_id in hydration query log_comment ([f381a5d](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/f381a5d512092d213f2a97c70b4ee653f1a29b7b)) by Michael Usachenko
+* **query:** remove server-side system.query_log enrichment ([33ceec1](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/33ceec123658e25ca63913533f7f41376828fbee)) by Michael Usachenko
+
+### Other
+
+* **deps:** bump rust-analyzer crates to 0.0.333 ([9259be1](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/9259be13c721a113ba74bf87a82abf16ef2879ab)) by Michael Angelo Rivera
+* **deps:** update opentelemetry to 0.32 and bump labkit-rs ([8133ca0](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/8133ca03420c599b1df3cdf1fbcc751a48269699)) by Jean-Gabriel Doyon
+* **deps:** update rust crate arrow_56 to v56.2.1 ([d3e0631](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/d3e06316b0fb924273660494917348d34ef94dd7)) by GitLab Renovate Bot
+* **deps:** update rust crate arrow-ipc to v58.3.0 ([7a20dfd](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/7a20dfdc52ec1bde5178bb4741a2657d145bb2e9)) by GitLab Renovate Bot
+* **deps:** update rust crate jsonwebtoken to v10.4.0 ([bbaffd8](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/bbaffd8f6fa33cba6d213ad4482dcb10749f1d6d)) by GitLab Renovate Bot
+* **deps:** update rust crate parquet to v58.3.0 ([c1caf9a](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/c1caf9a1dec780eb1f9fcaf42598c257bcf2d816)) by GitLab Renovate Bot
+* **deps:** update rust crate rcgen to v0.14.8 ([d28350a](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/d28350a0663e4b017a4150d91e227fcadd627c6c)) by GitLab Renovate Bot
+* **windows:** code-sign orbit.exe ([80de329](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/80de329c277c26961aea640ce83ef1460917cc4b)) by Bohdan Parkhomchuk
+* **windows:** cross-compile orbit.exe for Windows x86_64 ([78498b3](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/78498b3894c4ee3a51105d0567bfbace4a07858c)) by Bohdan Parkhomchuk
+
 ## [0.58.0](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.57.0...v0.58.0) (2026-05-15)
 
 ### Features
