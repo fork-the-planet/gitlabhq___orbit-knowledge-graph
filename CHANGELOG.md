@@ -1,3 +1,9 @@
+## [0.63.2](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.63.1...v0.63.2) (2026-05-26)
+
+### Performance
+
+* **indexer:** reuse ClickHouse writers in code sink ([9042e23](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/9042e236667a0a22fe8198a3680a757e60604ab1)) by Michael Angelo Rivera
+
 ## [0.63.1](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.63.0...v0.63.1) (2026-05-26)
 
 ### Fixes
