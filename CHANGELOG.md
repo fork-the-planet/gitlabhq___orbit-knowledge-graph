@@ -1,3 +1,9 @@
+## [0.63.1](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.63.0...v0.63.1) (2026-05-26)
+
+### Fixes
+
+* **indexer:** add backpressure to engine listen loop ([658e9be](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/658e9be0ba5ebdc1fe9cd5b6d177885125ba3405)) by Jean-Gabriel Doyon
+
 ## [0.63.0](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.62.0...v0.63.0) (2026-05-26)
 
 ### Features
