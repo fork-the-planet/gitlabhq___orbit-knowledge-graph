@@ -128,6 +128,7 @@ async fn snowplow_micro_receives_gkg_query_executed() {
         root_namespace_id: Some(99),
         global_user_id: Some("guser-it"),
         session_id: Some("sess-it"),
+        is_gitlab_team_member: None,
     });
 
     let event = labkit_events::StructuredEvent::builder("gkg", "gkg_query_executed")
@@ -173,15 +174,11 @@ async fn snowplow_micro_receives_gkg_query_executed() {
         })
         .unwrap_or_default();
     assert!(
-        context_schemas
-            .iter()
-            .any(|s| s == "iglu:com.gitlab/orbit_common/jsonschema/1-0-0"),
+        context_schemas.contains(&*gkg_analytics::ORBIT_COMMON_SCHEMA),
         "missing orbit_common context, contexts={context_schemas:?}"
     );
     assert!(
-        context_schemas
-            .iter()
-            .any(|s| s == "iglu:com.gitlab/orbit_query/jsonschema/2-0-1"),
+        context_schemas.contains(&*gkg_analytics::ORBIT_QUERY_SCHEMA),
         "missing orbit_query context, contexts={context_schemas:?}"
     );
 

@@ -42,6 +42,7 @@ pub(crate) fn build_query(
         root_namespace_id: claims.root_namespace_id,
         global_user_id: claims.global_user_id.as_deref(),
         session_id: claims.ai_session_id.as_deref(),
+        is_gitlab_team_member: claims.is_gitlab_team_member,
     })
 }
 
@@ -57,8 +58,7 @@ fn leaf_namespace_ids(claims: &Claims) -> Vec<i64> {
 mod tests {
     use super::*;
     use crate::auth::TraversalPathClaim;
-    use gkg_analytics::{ORBIT_COMMON_SCHEMA, ORBIT_QUERY_SCHEMA};
-    use labkit_events::{SnowplowContext, StructuredEvent};
+    use labkit_events::StructuredEvent;
 
     fn claims_with_paths(paths: Vec<&str>) -> Claims {
         Claims {
@@ -178,17 +178,70 @@ mod tests {
         assert_eq!(data["schema_version"], "33");
     }
 
-    #[test]
-    fn common_schema_is_1_0_0() {
-        let claims = claims_with_paths(vec![]);
-        let common = build_common(&AnalyticsConfig::default(), &claims, "33");
-        assert_eq!(common.schema(), ORBIT_COMMON_SCHEMA);
-    }
+    // ── Iglu schema validation ──────────────────────────────────────────
 
-    #[test]
-    fn query_schema_is_2_0_1() {
-        let claims = claims_with_paths(vec![]);
-        let query = build_query(&claims, "query_graph", None);
-        assert_eq!(query.schema(), ORBIT_QUERY_SCHEMA);
+    mod iglu {
+        use super::*;
+        use labkit_events::SnowplowContext;
+        use std::sync::LazyLock;
+
+        static ORBIT_COMMON_VALIDATOR: LazyLock<jsonschema::Validator> = LazyLock::new(|| {
+            let schema = gkg_analytics::load_schema_json("orbit_common");
+            jsonschema::validator_for(&schema).expect("orbit_common schema compiles")
+        });
+
+        static ORBIT_QUERY_VALIDATOR: LazyLock<jsonschema::Validator> = LazyLock::new(|| {
+            let schema = gkg_analytics::load_schema_json("orbit_query");
+            jsonschema::validator_for(&schema).expect("orbit_query schema compiles")
+        });
+
+        fn assert_valid(validator: &jsonschema::Validator, data: &serde_json::Value, label: &str) {
+            let errors: Vec<_> = validator
+                .iter_errors(data)
+                .map(|e| format!("  - {e}"))
+                .collect();
+            if !errors.is_empty() {
+                panic!(
+                    "{label} failed Iglu schema validation:\n{}",
+                    errors.join("\n")
+                );
+            }
+        }
+
+        #[test]
+        fn common_context_validates_against_iglu_schema() {
+            let claims = claims_with_paths(vec!["1/22/"]);
+            let common = build_common(&AnalyticsConfig::default(), &claims, "33");
+            assert_valid(&ORBIT_COMMON_VALIDATOR, &common.data(), "orbit_common");
+        }
+
+        #[test]
+        fn common_context_minimal_validates() {
+            let claims = claims_with_paths(vec![]);
+            let common = build_common(&AnalyticsConfig::default(), &claims, "33");
+            assert_valid(
+                &ORBIT_COMMON_VALIDATOR,
+                &common.data(),
+                "orbit_common (minimal)",
+            );
+        }
+
+        #[test]
+        fn query_context_validates_against_iglu_schema() {
+            let claims = claims_with_paths(vec!["1/22/"]);
+            let query = build_query(&claims, "query_graph", Some("claude-code"));
+            assert_valid(&ORBIT_QUERY_VALIDATOR, &query.data(), "orbit_query");
+        }
+
+        #[test]
+        fn query_context_minimal_validates() {
+            let claims = claims_with_paths(vec![]);
+            let query = build_query(&claims, "query_graph", None);
+            assert_valid(
+                &ORBIT_QUERY_VALIDATOR,
+                &query.data(),
+                "orbit_query (minimal)",
+            );
+        }
     }
 }

@@ -82,6 +82,7 @@ stages:
     MISE_DISABLE_TOOLS: lefthook
   before_script:
     - mise install
+    - vendir sync
 
 .sccache-template:
   variables:
@@ -92,6 +93,7 @@ stages:
     DUCKDB_DOWNLOAD_LIB: "1"
   before_script:
     - mise install
+    - vendir sync
     - |
       if [ -n "${SCCACHE_GCS_KEY}" ]; then
         export RUSTC_WRAPPER="sccache"
@@ -269,6 +271,18 @@ query-dsl-version-check:
     - apk add --no-cache git bash
     - git fetch origin "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME" --depth=1
     - bash ./scripts/check-query-dsl-version.sh "origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+
+iglu-schema-check:
+  stage: lint
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/alpine:latest
+  tags:
+    - saas-linux-medium-amd64
+  extends:
+    - .mr-only-rules
+  needs: []
+  script:
+    - apk add --no-cache bash curl python3
+    - bash ./scripts/iglu/check.sh --remote-only
 
 fmt-check:
   stage: lint
