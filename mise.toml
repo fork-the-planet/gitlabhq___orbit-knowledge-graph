@@ -35,6 +35,7 @@ DUCKDB_DOWNLOAD_LIB = "{{env.DUCKDB_DOWNLOAD_LIB | default(value='1')}}"
 clickhouse = "25.12"
 duckdb = "1.5.1"
 uv = "0.9.28"
+vendir = "0.45.3"
 node = "24"
 markdownlint-cli2 = "0.22.1"
 lychee = "0.23"
@@ -322,6 +323,14 @@ description = "Start the local GKG health-check process"
 run = "./scripts/gkg-native-dev.sh env"
 description = "Print the derived local GKG environment"
 
+
+[tasks."iglu:bump"]
+run = "bash ./scripts/iglu/bump.sh"
+description = "Bump a pinned Iglu schema version (e.g. mise iglu:bump -- orbit_query 2-0-2)"
+
+[tasks."iglu:check"]
+run = "bash ./scripts/iglu/check.sh"
+description = "Verify pinned Iglu schemas exist locally and match live Iglu"
 
 [tasks."ontology:validate"]
 run = "find config/ontology -name '*.yaml' ! -name 'reference.yaml' | xargs uvx check-jsonschema --verbose --schemafile config/schemas/ontology.schema.json"

@@ -4,11 +4,49 @@
 //! Each struct wraps a `serde_json::Value` payload and implements
 //! `SnowplowContext` with the corresponding Iglu schema URI.
 
+use std::path::PathBuf;
+use std::sync::LazyLock;
+
 use labkit_events::SnowplowContext;
 use serde::Serialize;
 
-pub const ORBIT_COMMON_SCHEMA: &str = "iglu:com.gitlab/orbit_common/jsonschema/1-0-0";
-pub const ORBIT_QUERY_SCHEMA: &str = "iglu:com.gitlab/orbit_query/jsonschema/2-0-1";
+/// Read the pinned version from a `.version` file.
+fn pinned_version(name: &str) -> String {
+    let path = PathBuf::from(env!("SCHEMA_DIR"))
+        .join("iglu")
+        .join(format!("{name}.version"));
+    std::fs::read_to_string(&path)
+        .unwrap_or_else(|e| panic!("cannot read {}: {e}", path.display()))
+        .trim()
+        .to_string()
+}
+
+/// Resolve the schema JSON path in the vendored subtree for a pinned version.
+fn schema_path(name: &str, version: &str) -> PathBuf {
+    PathBuf::from(env!("IGLU_DIR"))
+        .join(name)
+        .join("jsonschema")
+        .join(version)
+}
+
+pub static ORBIT_COMMON_SCHEMA: LazyLock<String> = LazyLock::new(|| {
+    let version = pinned_version("orbit_common");
+    format!("iglu:com.gitlab/orbit_common/jsonschema/{version}")
+});
+
+pub static ORBIT_QUERY_SCHEMA: LazyLock<String> = LazyLock::new(|| {
+    let version = pinned_version("orbit_query");
+    format!("iglu:com.gitlab/orbit_query/jsonschema/{version}")
+});
+
+/// Load the schema JSON for a given schema name at its pinned version.
+pub fn load_schema_json(name: &str) -> serde_json::Value {
+    let version = pinned_version(name);
+    let path = schema_path(name, &version);
+    let content = std::fs::read_to_string(&path)
+        .unwrap_or_else(|e| panic!("cannot read {}: {e}", path.display()));
+    serde_json::from_str(&content).expect("vendored Iglu schema is valid JSON")
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // orbit_common
@@ -20,7 +58,7 @@ pub struct OrbitCommonContext {
 
 impl SnowplowContext for OrbitCommonContext {
     fn schema(&self) -> &str {
-        ORBIT_COMMON_SCHEMA
+        &ORBIT_COMMON_SCHEMA
     }
 
     fn data(&self) -> serde_json::Value {
@@ -66,7 +104,7 @@ pub struct OrbitQueryContext {
 
 impl SnowplowContext for OrbitQueryContext {
     fn schema(&self) -> &str {
-        ORBIT_QUERY_SCHEMA
+        &ORBIT_QUERY_SCHEMA
     }
 
     fn data(&self) -> serde_json::Value {
@@ -89,6 +127,8 @@ pub struct OrbitQueryData<'a> {
     pub global_user_id: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub session_id: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_gitlab_team_member: Option<bool>,
 }
 
 impl OrbitQueryContext {
