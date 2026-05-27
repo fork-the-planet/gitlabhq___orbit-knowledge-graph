@@ -1,3 +1,9 @@
+## [0.64.1](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.64.0...v0.64.1) (2026-05-27)
+
+### Fixes
+
+* copy schemas and iglu vendor into runtime image ([fa48a25](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/fa48a258c503c338d6c8ed0d95649dfbc8109ec2)) by Bohdan Parkhomchuk
+
 ## [0.64.0](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.63.2...v0.64.0) (2026-05-27)
 
 ### Features
