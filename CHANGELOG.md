@@ -1,3 +1,19 @@
+## [0.64.0](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.63.2...v0.64.0) (2026-05-27)
+
+### Features
+
+* **indexer:** shuffle code backfill across namespaces ([1690907](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/16909071c0362690aa5b943e89e2875864037ec4)) by Michael Angelo Rivera
+* validate analytics Snowplow contexts against vendored Iglu schemas ([2ca9e5b](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/2ca9e5be614774415550d9eafb7fa087f654ac5c)) by Michael Usachenko
+
+### Fixes
+
+* enforce per-file and cross-file resolution timeouts in code indexing ([7d2d402](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/7d2d402569762fe404c5cbfe4fd41c1102ab57ed)) by Michael Usachenko
+
+### Other
+
+* **indexer:** cap concurrent indexing to half the code group ([d2edadf](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/d2edadf1858a1684b89e9dc1873fa43edc05fd57)) by Michael Angelo Rivera
+* **schema:** bump SCHEMA_VERSION to 46 ([d5a9c61](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/d5a9c61d4c609d1e0001a9ce7b79c38c2ba9c680)) by Bohdan Parkhomchuk
+
 ## [0.63.2](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.63.1...v0.63.2) (2026-05-26)
 
 ### Performance
