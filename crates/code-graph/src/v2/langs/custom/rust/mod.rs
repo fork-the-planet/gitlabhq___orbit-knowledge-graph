@@ -42,8 +42,9 @@ pub(super) use triomphe::Arc;
 
 use crate::v2::config::Language;
 use crate::v2::dsl::ssa::{BlockId, ResolvedSite, SsaEngine, SsaValue};
-use crate::v2::error::{AnalyzerError, FileFault};
+use crate::v2::error::{AnalyzerError, FileFault, FileSkip};
 use crate::v2::linker::{CodeGraph, GraphEdge};
+use crate::v2::sentinel;
 
 use crate::v2::pipeline::{BatchTx, FileInput, LanguagePipeline, PipelineContext, PipelineError};
 use crate::v2::types::{
@@ -138,6 +139,13 @@ impl LanguagePipeline for RustPipeline {
         let tracer = &ctx.tracer;
         let canonical_root = canonical_root_path(root_path);
         let root_path = canonical_root.as_str();
+
+        let sentinel_pair = ctx
+            .config
+            .per_file_timeout
+            .and_then(sentinel::spawn_sentinel);
+        let sentinel_handle = sentinel_pair.as_ref().map(|(h, _)| h);
+
         let workspaces = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             WorkspaceCatalog::load(root_path, files)
         })) {
@@ -158,7 +166,7 @@ impl LanguagePipeline for RustPipeline {
                 None
             }
         };
-        let output = parse_rust_files(files, root_path, workspaces.as_ref());
+        let output = parse_rust_files(files, root_path, workspaces.as_ref(), sentinel_handle);
         for (path, error) in &output.errors {
             match error {
                 AnalyzerError::Skip { kind, detail } => {
@@ -177,8 +185,22 @@ impl LanguagePipeline for RustPipeline {
             graph.mark_parsed_only();
         }
 
-        for file in &parsed {
+        // Edge resolution is sequential over all parsed files, so it
+        // gets its own wall-clock budget separate from the per-file
+        // sentinel used during the parallel parse phase.
+        let deadline = ctx
+            .config
+            .cross_file_resolve_timeout
+            .map(|d| std::time::Instant::now() + d);
+        let mut edge_timed_out = false;
+
+        'edge_resolve: for file in &parsed {
             for edge in &file.edge_candidates {
+                if deadline.is_some_and(|d| std::time::Instant::now() >= d) {
+                    tracing::warn!("rust edge resolution timed out");
+                    edge_timed_out = true;
+                    break 'edge_resolve;
+                }
                 let Some(source_node) = graph.enclosing_definition_for_range(
                     &edge.source_relative_path,
                     edge.source_start,
@@ -198,10 +220,17 @@ impl LanguagePipeline for RustPipeline {
                 }
             }
         }
-        add_unresolved_imported_call_edges(&mut graph, &parsed);
+        if !edge_timed_out {
+            add_unresolved_imported_call_edges(&mut graph, &parsed);
+        }
         graph.finalize(tracer);
 
         btx.send_graph(graph);
+
+        if let Some((handle, join)) = sentinel_pair {
+            handle.shutdown();
+            let _ = join.join();
+        }
 
         Ok(())
     }
@@ -211,18 +240,20 @@ fn parse_rust_files(
     files: &[FileInput],
     root_path: &str,
     workspaces: Option<&WorkspaceCatalog>,
+    sentinel: Option<&sentinel::SentinelHandle>,
 ) -> RustParseOutput {
     if let Some(workspaces) = workspaces {
-        return parse_rust_files_with_workspaces(files, root_path, workspaces);
+        return parse_rust_files_with_workspaces(files, root_path, workspaces, sentinel);
     }
 
-    parse_rust_files_standalone(files, root_path)
+    parse_rust_files_standalone(files, root_path, sentinel)
 }
 
 fn parse_rust_files_with_workspaces(
     files: &[FileInput],
     root_path: &str,
     workspaces: &WorkspaceCatalog,
+    sentinel: Option<&sentinel::SentinelHandle>,
 ) -> RustParseOutput {
     let mut parsed = Vec::with_capacity(files.len());
     let mut errors = Vec::new();
@@ -253,7 +284,20 @@ fn parse_rust_files_with_workspaces(
             .into_par_iter()
             .zip(workspace_files.par_iter())
             .map(|(workspace, file)| {
-                catch_rust_file_panic(file, || parse_workspace_file(file, root_path, &workspace))
+                let guard = sentinel.map(|s| s.file_start(file));
+                let result = catch_rust_file_panic(file, || {
+                    parse_workspace_file(file, root_path, &workspace)
+                });
+                if guard.as_ref().is_some_and(|g| g.is_killed()) {
+                    return Err((
+                        file.to_string(),
+                        AnalyzerError::skip(
+                            FileSkip::TimeoutSentinel,
+                            "per-file watchdog killed analysis",
+                        ),
+                    ));
+                }
+                result
             })
             .collect::<Vec<_>>();
 
@@ -268,9 +312,20 @@ fn parse_rust_files_with_workspaces(
     let standalone_results = standalone
         .par_iter()
         .map(|file_path| {
-            catch_rust_file_panic(file_path, || {
+            let guard = sentinel.map(|s| s.file_start(file_path));
+            let result = catch_rust_file_panic(file_path, || {
                 parse_rust_file_standalone(file_path, root_path)
-            })
+            });
+            if guard.as_ref().is_some_and(|g| g.is_killed()) {
+                return Err((
+                    file_path.to_string(),
+                    AnalyzerError::skip(
+                        FileSkip::TimeoutSentinel,
+                        "per-file watchdog killed analysis",
+                    ),
+                ));
+            }
+            result
         })
         .collect::<Vec<_>>();
 
@@ -284,13 +339,28 @@ fn parse_rust_files_with_workspaces(
     RustParseOutput { parsed, errors }
 }
 
-fn parse_rust_files_standalone(files: &[FileInput], root_path: &str) -> RustParseOutput {
+fn parse_rust_files_standalone(
+    files: &[FileInput],
+    root_path: &str,
+    sentinel: Option<&sentinel::SentinelHandle>,
+) -> RustParseOutput {
     let results = files
         .par_iter()
         .map(|file_path| {
-            catch_rust_file_panic(file_path, || {
+            let guard = sentinel.map(|s| s.file_start(file_path));
+            let result = catch_rust_file_panic(file_path, || {
                 parse_rust_file_standalone(file_path, root_path)
-            })
+            });
+            if guard.as_ref().is_some_and(|g| g.is_killed()) {
+                return Err((
+                    file_path.to_string(),
+                    AnalyzerError::skip(
+                        FileSkip::TimeoutSentinel,
+                        "per-file watchdog killed analysis",
+                    ),
+                ));
+            }
+            result
         })
         .collect::<Vec<_>>();
 

@@ -3,6 +3,7 @@ use oxc_resolver::{FileMetadata, FileSystem, FileSystemOs, ResolveOptions, Resol
 use std::collections::HashSet;
 use std::io;
 use std::path::{Path, PathBuf};
+use std::time::Instant;
 
 use super::super::types::{
     ExportedBinding, ImportedName, JsCallEdge, JsCallSite, JsCallTarget, JsResolutionMode,
@@ -161,10 +162,15 @@ impl JsCrossFileResolver {
         &self,
         calls_by_file: &[(String, Vec<JsCallEdge>)],
         modules: &JsModuleIndex,
+        deadline: &Option<Instant>,
     ) -> Vec<JsResolvedCallRelationship> {
         let mut relationships = Vec::new();
 
         for (file_path, calls) in calls_by_file {
+            if deadline.is_some_and(|d| Instant::now() >= d) {
+                tracing::warn!("js cross-file call resolution timed out");
+                break;
+            }
             let abs_path = self.root_dir.join(file_path);
 
             'call_loop: for call in calls {
