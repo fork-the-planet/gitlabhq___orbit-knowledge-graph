@@ -181,7 +181,11 @@ fn default_code_indexing_max_files() -> usize {
 }
 
 fn default_code_indexing_per_file_timeout_ms() -> u64 {
-    5000
+    2000
+}
+
+fn default_code_indexing_cross_file_resolve_timeout_ms() -> u64 {
+    180_000
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
@@ -200,6 +204,10 @@ pub struct CodeIndexingPipelineConfig {
     /// specify a different value. 0 = no global timeout.
     #[serde(default = "default_code_indexing_per_file_timeout_ms")]
     pub per_file_timeout_ms: u64,
+    /// Wall-clock budget for the sequential cross-file resolution phase
+    /// (import edges, call edges). 0 = no timeout.
+    #[serde(default = "default_code_indexing_cross_file_resolve_timeout_ms")]
+    pub cross_file_resolve_timeout_ms: u64,
 }
 
 impl Default for CodeIndexingPipelineConfig {
@@ -210,6 +218,7 @@ impl Default for CodeIndexingPipelineConfig {
             worker_threads: 0,
             max_concurrent_languages: 0,
             per_file_timeout_ms: default_code_indexing_per_file_timeout_ms(),
+            cross_file_resolve_timeout_ms: default_code_indexing_cross_file_resolve_timeout_ms(),
         }
     }
 }
