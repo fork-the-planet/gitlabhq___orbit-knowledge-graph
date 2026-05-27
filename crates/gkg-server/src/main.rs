@@ -209,6 +209,7 @@ async fn run_webserver(
     }
 
     gkg_billing::register_metrics();
+    gkg_billing::register_quota_metrics();
     if config.billing.enabled {
         if config.billing.collector_url.trim().is_empty() {
             return Err(anyhow::anyhow!(
