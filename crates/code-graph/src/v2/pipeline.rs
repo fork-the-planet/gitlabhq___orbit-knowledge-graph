@@ -132,6 +132,9 @@ pub struct FamilyFileInput {
 ///
 /// Owned so it can be stored in `Arc` and shared across threads
 /// and into structs like `CodeGraph`.
+/// Max file timing entries retained (top-N by total_ms).
+const MAX_FILE_TIMINGS: usize = 100;
+
 pub struct PipelineContext {
     pub config: PipelineConfig,
     pub tracer: crate::v2::trace::Tracer,
@@ -143,6 +146,10 @@ pub struct PipelineContext {
     /// `gkg.indexer.code.file_faults{kind}` and contribute to
     /// `files.processed{outcome="errored"}`.
     pub faults: std::sync::Mutex<Vec<crate::v2::error::FaultedFile>>,
+    /// Per-file timing entries collected across all languages.
+    pub file_timings: std::sync::Mutex<Vec<FileTimingEntry>>,
+    /// Per-language phase timing entries.
+    pub language_timings: std::sync::Mutex<Vec<LanguageTimings>>,
 }
 
 impl PipelineContext {
@@ -179,6 +186,50 @@ impl PipelineContext {
                 detail: detail.into(),
             });
         }
+    }
+
+    /// Record a file timing entry into the bounded top-N heap.
+    /// Only retains the slowest `MAX_FILE_TIMINGS` entries, so peak
+    /// memory is proportional to the cap, not the repo file count.
+    pub fn record_file_timing(&self, entry: FileTimingEntry) {
+        if let Ok(mut timings) = self.file_timings.lock() {
+            if timings.len() < MAX_FILE_TIMINGS {
+                timings.push(entry);
+            } else if let Some(min) = timings
+                .iter()
+                .enumerate()
+                .min_by(|(_, a), (_, b)| {
+                    a.total_ms
+                        .partial_cmp(&b.total_ms)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                })
+                .map(|(i, _)| i)
+                .filter(|&i| entry.total_ms > timings[i].total_ms)
+            {
+                timings[min] = entry;
+            }
+        }
+    }
+
+    pub fn record_language_timing(&self, entry: LanguageTimings) {
+        if let Ok(mut timings) = self.language_timings.lock() {
+            timings.push(entry);
+        }
+    }
+
+    /// Drain collected timings, sorted by total_ms descending.
+    pub fn drain_slowest_files(&self) -> Vec<FileTimingEntry> {
+        let mut timings = self
+            .file_timings
+            .lock()
+            .map(|mut t| std::mem::take(&mut *t))
+            .unwrap_or_default();
+        timings.sort_by(|a, b| {
+            b.total_ms
+                .partial_cmp(&a.total_ms)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        timings
     }
 }
 
@@ -437,6 +488,22 @@ pub struct FileInventoryEntry {
     pub size: u64,
 }
 
+/// Per-file timing captured during pipeline execution.
+///
+/// `resolve_ms` reflects per-file SSA/edge resolution for generic
+/// (tree-sitter) and Rust pipelines. For JS/TS (OXC), cross-file
+/// resolution runs as a bulk phase and is not attributed per-file,
+/// so `resolve_ms` will be 0 and `total_ms` reflects parse time only.
+#[derive(Debug, Clone)]
+pub struct FileTimingEntry {
+    pub path: String,
+    pub size_bytes: u64,
+    pub parse_ms: f64,
+    pub resolve_ms: f64,
+    pub total_ms: f64,
+    pub language: String,
+}
+
 pub struct PipelineResult {
     pub stats: PipelineStats,
     /// Task-level errors. Fatal entries route to `code_errors_total{stage}`.
@@ -457,6 +524,36 @@ pub struct PipelineStats {
     pub imports_count: usize,
     pub references_count: usize,
     pub edges_count: usize,
+    /// Per-file timing entries, sorted by total_ms descending.
+    pub slowest_files: Vec<FileTimingEntry>,
+    /// Per-language phase breakdown.
+    pub language_timings: Vec<LanguageTimings>,
+    /// Top-level pipeline phase durations (non-overlapping).
+    pub phase_timings: PhaseTimings,
+}
+
+/// Per-language phase breakdown. Phases are non-overlapping and sum
+/// to `total_ms` for each language.
+#[derive(Debug, Clone, Default)]
+pub struct LanguageTimings {
+    pub language: String,
+    pub file_count: usize,
+    pub total_bytes: u64,
+    pub parse_ms: f64,
+    pub graph_build_ms: f64,
+    pub resolve_ms: f64,
+    pub total_ms: f64,
+}
+
+/// Top-level pipeline phase durations. `file_discovery_ms` and
+/// `structural_graph_ms` run once; language processing runs with
+/// bounded concurrency so wall-clock times may overlap.
+#[derive(Debug, Clone, Default)]
+pub struct PhaseTimings {
+    pub file_discovery_ms: f64,
+    pub structural_graph_ms: f64,
+    pub language_processing_ms: f64,
+    pub total_ms: f64,
 }
 
 #[derive(Debug)]
@@ -533,11 +630,13 @@ impl Pipeline {
     ) -> PipelineResult {
         let root_str = root.to_string_lossy().to_string();
         config.emit_file_inventory_graph = true;
+        let t_pipeline = std::time::Instant::now();
 
         // 1. Normalize the repository inventory, then group parseable files
         //    by language family. Files keep their specific Language for
         //    parser selection; the family determines which files share a
         //    CodeGraph for cross-language resolution.
+        let t_discovery = std::time::Instant::now();
         let pb_discover = spinner("Preparing file inventory...");
         let file_inventory = canonical_file_inventory(file_inventory.iter().cloned());
         let (files_by_family, parsed_file_languages) =
@@ -560,6 +659,8 @@ impl Pipeline {
             root_path: root_str,
             skipped: std::sync::Mutex::new(Vec::new()),
             faults: std::sync::Mutex::new(Vec::new()),
+            file_timings: std::sync::Mutex::new(Vec::new()),
+            language_timings: std::sync::Mutex::new(Vec::new()),
         });
 
         // 2. Process languages with bounded concurrency. At most
@@ -579,6 +680,9 @@ impl Pipeline {
         let edges_count = AtomicUsize::new(0);
         let all_errors = std::sync::Mutex::new(Vec::<PipelineError>::new());
 
+        let file_discovery_ms = t_discovery.elapsed().as_secs_f64() * 1000.0;
+
+        let t_structural = std::time::Instant::now();
         if !file_inventory.is_empty() {
             let structural_graph =
                 Self::build_file_inventory_graph(root, &file_inventory, &parsed_file_languages);
@@ -596,8 +700,10 @@ impl Pipeline {
                 ),
             );
         }
+        let structural_graph_ms = t_structural.elapsed().as_secs_f64() * 1000.0;
 
         // Bounded channel as a semaphore: N permits = N concurrent languages
+        let t_languages = std::time::Instant::now();
         let (sem_tx, sem_rx) = crossbeam_channel::bounded::<()>(max_langs);
         for _ in 0..max_langs {
             sem_tx.send(()).unwrap();
@@ -761,6 +867,7 @@ impl Pipeline {
                 });
             }
         }); // all threads join here
+        let language_processing_ms = t_languages.elapsed().as_secs_f64() * 1000.0;
 
         let skipped = ctx
             .skipped
@@ -772,6 +879,18 @@ impl Pipeline {
             .lock()
             .map(|mut e| std::mem::take(&mut *e))
             .unwrap_or_default();
+
+        let slowest_files = ctx.drain_slowest_files();
+        let mut language_timings = ctx
+            .language_timings
+            .lock()
+            .map(|mut t| std::mem::take(&mut *t))
+            .unwrap_or_default();
+        language_timings.sort_by(|a, b| {
+            b.total_ms
+                .partial_cmp(&a.total_ms)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         PipelineResult {
             stats: PipelineStats {
@@ -785,6 +904,14 @@ impl Pipeline {
                 imports_count: imports_count.into_inner(),
                 references_count: 0,
                 edges_count: edges_count.into_inner(),
+                slowest_files,
+                language_timings,
+                phase_timings: PhaseTimings {
+                    file_discovery_ms,
+                    structural_graph_ms,
+                    language_processing_ms,
+                    total_ms: t_pipeline.elapsed().as_secs_f64() * 1000.0,
+                },
             },
             errors: all_errors.into_inner().unwrap_or_default(),
             skipped,
@@ -1028,6 +1155,7 @@ impl FamilyPipeline {
             result: ParseFullResult,
             ext: String,
             file_size: u64,
+            parse_ms: f64,
         }
 
         let parse_outcomes: Vec<Option<ParseOutcome>> = files
@@ -1053,6 +1181,7 @@ impl FamilyPipeline {
                     }
                 };
 
+                let t_parse = std::time::Instant::now();
                 let result = match lctx
                     .spec
                     .parse_full_collect(&source, &f.path, f.language, tracer)
@@ -1073,6 +1202,7 @@ impl FamilyPipeline {
                         }));
                     }
                 };
+                let parse_ms = t_parse.elapsed().as_secs_f64() * 1000.0;
 
                 let ext = f
                     .path
@@ -1088,9 +1218,12 @@ impl FamilyPipeline {
                     result,
                     ext,
                     file_size,
+                    parse_ms,
                 }))
             })
             .collect();
+
+        let parse_ms = t0.elapsed().as_secs_f64() * 1000.0;
 
         let mut parsed_faults: Vec<FaultedFile> = Vec::new();
         let parsed: Vec<Option<ParsedFile>> = parse_outcomes
@@ -1118,6 +1251,8 @@ impl FamilyPipeline {
             refs: Vec<CollectedRef>,
             inferred_returns: Vec<(u32, String)>,
             unresolved_aliases: Vec<(usize, String)>,
+            parse_ms: f64,
+            file_size: u64,
         }
 
         let mut graph = CodeGraph::new_with_root(root_path.to_string()).with_rules(primary_rules);
@@ -1153,6 +1288,8 @@ impl FamilyPipeline {
                 refs: parsed_file.result.refs,
                 inferred_returns: parsed_file.result.inferred_returns,
                 unresolved_aliases: parsed_file.result.unresolved_aliases,
+                parse_ms: parsed_file.parse_ms,
+                file_size: parsed_file.file_size,
             });
         }
 
@@ -1163,6 +1300,7 @@ impl FamilyPipeline {
 
         graph.finalize(tracer);
         graph.drop_construction_indexes();
+        let graph_build_ms = t0.elapsed().as_secs_f64() * 1000.0 - parse_ms;
 
         // ── Phase 1c: patch unresolved SSA aliases ──────────────
         for fwr in files_with_refs.iter_mut().flatten() {
@@ -1210,7 +1348,8 @@ impl FamilyPipeline {
 
         let resolve_results: Vec<Phase2Result> = files_with_refs
             .into_par_iter()
-            .map(|fwr_opt| -> Phase2Result {
+            .enumerate()
+            .map(|(file_idx, fwr_opt)| -> Phase2Result {
                 if ctx.is_cancelled() {
                     pb2.inc(1);
                     return Default::default();
@@ -1237,6 +1376,7 @@ impl FamilyPipeline {
                     resolver.set_include_index(Arc::clone(idx));
                 }
 
+                let t_resolve = std::time::Instant::now();
                 let mut edges = Vec::new();
                 let mut failed_chains: Vec<FailedChain> = Vec::new();
                 let mut killed = false;
@@ -1269,6 +1409,16 @@ impl FamilyPipeline {
                         edges.extend(import_edges);
                     }
                 }
+                let resolve_ms = t_resolve.elapsed().as_secs_f64() * 1000.0;
+
+                ctx.record_file_timing(FileTimingEntry {
+                    path: files[file_idx].path.clone(),
+                    size_bytes: fwr.file_size,
+                    parse_ms: fwr.parse_ms,
+                    resolve_ms,
+                    total_ms: fwr.parse_ms + resolve_ms,
+                    language: format!("{}", fwr.language),
+                });
 
                 dedupe_edge_triples(&mut edges);
                 total_edges.fetch_add(edges.len(), std::sync::atomic::Ordering::Relaxed);
@@ -1403,6 +1553,30 @@ impl FamilyPipeline {
             let _ = join.join();
         }
 
+        let total_ms = t0.elapsed().as_secs_f64() * 1000.0;
+        let resolve_ms = total_ms - parse_ms - graph_build_ms;
+        let total_bytes: u64 = files
+            .iter()
+            .map(|f| {
+                std::fs::metadata(format!("{root_path}/{}", f.path))
+                    .map(|m| m.len())
+                    .unwrap_or(0)
+            })
+            .sum();
+
+        ctx.record_language_timing(LanguageTimings {
+            language: format!(
+                "{}",
+                files.first().map(|f| f.language).unwrap_or(primary_lang)
+            ),
+            file_count,
+            total_bytes,
+            parse_ms,
+            graph_build_ms,
+            resolve_ms,
+            total_ms,
+        });
+
         tracing::info!(
             duration_ms = t0.elapsed().as_millis() as u64,
             nodes = graph.graph.node_count(),
@@ -1461,6 +1635,8 @@ mod tests {
             root_path: "/".to_string(),
             skipped: std::sync::Mutex::new(Vec::new()),
             faults: std::sync::Mutex::new(Vec::new()),
+            file_timings: std::sync::Mutex::new(Vec::new()),
+            language_timings: std::sync::Mutex::new(Vec::new()),
         });
         let capture = Arc::new(TestCapture::new());
         let (tx, _rx) = crossbeam_channel::unbounded();
@@ -1859,6 +2035,8 @@ namespace MyApp {
             root_path: "/".to_string(),
             skipped: std::sync::Mutex::new(Vec::new()),
             faults: std::sync::Mutex::new(Vec::new()),
+            file_timings: std::sync::Mutex::new(Vec::new()),
+            language_timings: std::sync::Mutex::new(Vec::new()),
         });
         ctx.record_skip(
             "src/slow.rs",
