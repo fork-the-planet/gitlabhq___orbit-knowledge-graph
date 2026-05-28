@@ -1,7 +1,7 @@
 ---
 name: orbit
 description: Query the GitLab Knowledge Graph (Orbit) via `glab orbit remote` CLI subcommands or run a local copy with `glab orbit local`. Use for code-structure questions (who calls this function, where is this symbol defined), cross-project dependency and blast-radius analysis, merge-request and contributor queries, and any question answerable by traversing GitLab's unified entity graph (projects, users, MRs, issues, pipelines, files, definitions, vulnerabilities).
-version: 0.8.0
+version: 0.9.0
 license: MIT
 metadata:
   audience: developers
@@ -151,6 +151,21 @@ Concrete rules:
 Cost grows linearly in attempts, both in CLI shell-out time and in agent
 context. A hard cap is cheaper than an ambiguous answer.
 
+## Repository map helpers
+
+For code-structure orientation before planning a change, use one of the bundled
+repo-map helpers and load the matching reference for details:
+
+- **Local checkout / uncommitted or branch-local code:** use the Orbit Local
+  helper. See [`references/local_repo_map.md`](references/local_repo_map.md).
+- **Project already indexed in Orbit Remote / no local checkout needed:** use
+  the Orbit Remote helper. See
+  [`references/remote_repo_map.md`](references/remote_repo_map.md).
+
+Helper script paths are relative to the Orbit skill root (the directory
+containing this `SKILL.md`), not the user's current repository. The reference
+files include invocation examples and path-resolution notes.
+
 ## Reporting results
 
 Orbit answers are graph queries against ClickHouse, not an authoritative
@@ -197,6 +212,8 @@ Not:
 |---|---|
 | Full DSL reference | [`references/query_language.md`](references/query_language.md) |
 | Paste-ready bodies per `query_type` | [`references/recipes.md`](references/recipes.md) |
+| Local repository map helper | [`references/local_repo_map.md`](references/local_repo_map.md) |
+| Remote repository map helper | [`references/remote_repo_map.md`](references/remote_repo_map.md) |
 | CLI exit codes (1-5) and common errors | [`references/troubleshooting.md`](references/troubleshooting.md) |
 | `glab orbit local` install, update, config, and usage | [`references/local_cli.md`](references/local_cli.md) |
 
@@ -225,6 +242,11 @@ See [`references/local_cli.md`](references/local_cli.md) for full config keys,
 pass-through args, and usage examples.
 
 ## Contributing
+
+If Orbit guidance, recipes, or helper behavior is inaccurate, update this skill
+in `gitlab-org/orbit/knowledge-graph` rather than working around it silently.
+Keep `SKILL.md`, `references/`, and `scripts/` in sync, and use `opencode run`
+for meaningful behavior changes.
 
 `references/query_language.md` is synced from
 `docs/source/remote/queries/query-language.md`. Edit the upstream file, then run
