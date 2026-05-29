@@ -1,3 +1,41 @@
+## [0.66.0](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.65.1...v0.66.0) (2026-05-29)
+
+### Features
+
+* add lefthook + CI check for skill version bumps ([4788ea5](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/4788ea59168e95e854cc2a0a0e8e553b92ff56ab)) by Dmitry Gruzd
+* **indexer:** add dispatch_id correlation to NATS messages ([73f620c](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/73f620c6ae7af720475562f85eb2e78d48511b69)) by Jean-Gabriel Doyon
+* **indexer:** make NATS max_ack_pending configurable per subscription ([8a92620](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/8a9262002d011f80e6c9d9e32dfdcc1799854b16)) by Michael Angelo Rivera
+* populate code edge tags for query-time filtering ([3aa1788](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/3aa17887adae00ffa2a5cfa36d9a68d688fd8433)) by Michael Usachenko
+* **schema:** redesign edge table sort order and remove redundant projections ([c5aa84f](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/c5aa84f3925ba58d5ec3f67b60071e2ab4683b28)) by Michael Usachenko
+* send NATS heartbeats during code-graph pipeline execution ([071338a](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/071338a945ff4785ce8c3c00748a293c8d0f75e8)) by Michael Usachenko
+* **skills:** bundle repo-map helpers into main orbit skill ([19dac63](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/19dac6333a36ffa1b4024029e153fe239121f88f)) by Dmitry Gruzd
+
+### Fixes
+
+* **analytics:** record code_intelligence source_type in query events ([5530d1d](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/5530d1d6642131ea651eab0dab1e1ce51b0d7d03)) by Michael Angelo Rivera
+* **code-graph:** 1-index line and column positions at the projection boundary ([8420c38](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/8420c386d8a133b958347c82a55448d53917daa1)) by Michael Angelo Rivera
+* **code-graph:** dedupe JS/TS exported symbols to one definition row ([c8420c7](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/c8420c7da1eda7df3977daf4a4133b407839c2b5)) by Michael Angelo Rivera
+* **code-graph:** populate name for C# aliased using directives ([66bc113](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/66bc113447e0104ef72d0e2c23cac2250b636af7)) by Michael Angelo Rivera
+* handle Arrow offset overflow in code pipeline Go worker ([bfacaac](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/bfacaacd3f44b28b37b3f65572fe10f0167f8848)) by Dmitry Gruzd
+* **indexer:** scope stale edge cleanup to project+branch via source_id subquery ([185ae12](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/185ae12da8879ca3008dcd4f6bceb73ac228fc6d)) by Michael Usachenko
+* skip symlink-escape archives instead of retrying indefinitely ([1823cbe](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/1823cbe3c12d857be00dcca3a3d2615b3619552c)) by Dmitry Gruzd
+
+### Performance
+
+* **code-graph:** avoid redundant UTF-8 revalidation in [secure] indexer hot paths ([30e21a7](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/30e21a77fd48224e9a77e148597ec85bf270c63e)) by Michael Angelo Rivera
+* **code-graph:** make C/C++ include-graph resolution linear (2.75x on chromium) ([9b5cc7a](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/9b5cc7aa7293b62d242ded1cd3d15a7ae0fa7061)) by Michael Angelo Rivera
+* **indexer:** skip stale data cleanup on first-time code indexing ([a138f58](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/a138f5861a8a920f034a905973949c8d3e24877d)) by Michael Angelo Rivera
+
+### Other
+
+* add Orbit skill installation page to source docs ([b773d80](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/b773d807af3967aab2e45b5cb13eb6eadc52fbd0)) by Dmitry Gruzd
+* **deps:** update rust crate duckdb to v1.10503.0 ([2667ff7](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/2667ff79e7d002ec51ade4f593c2a8c81ecd52a2)) by GitLab Renovate Bot
+* **deps:** update rust crate serde_json to v1.0.150 ([c80d58f](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/c80d58f269e78d3fdfee7c5024612a27d8c57bc9)) by GitLab Renovate Bot
+* **e2e:** add API surface and query-shape suites (group E) ([f90dd14](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/f90dd14a98b186f70b66a4d20ea8f8b5dfc9c6e5)) by Michael Angelo Rivera
+* **e2e:** add lifecycle and authz suites (group D) ([921f851](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/921f8510b31d1690d03807bfe324f23182f0eae6)) by Michael Angelo Rivera
+* **e2e:** add security and membership graph suites (group F) ([5999c31](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/5999c3106d6442e5a58f2d45bd09b5cb93514d60)) by Michael Angelo Rivera
+* **lefthook:** move workspace clippy from pre-commit to pre-push ([09f32b2](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/09f32b2649a6695e4696651574aa81a27a9abd28)) by Michael Angelo Rivera
+
 ## [0.65.1](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.65.0...v0.65.1) (2026-05-28)
 
 ### Fixes
