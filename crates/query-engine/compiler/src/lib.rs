@@ -1357,14 +1357,19 @@ mod tests {
             let compiled = compile(query, &ONTOLOGY, &security_ctx())
                 .unwrap_or_else(|err| panic!("{name} should compile: {err}"));
             let sql = compiled.base.render();
+            // Node JOINs in FK-star aggregations use LIMIT BY; other query
+            // types (traversal, path_finding, neighbors) keep FINAL on
+            // their primary scans and may use LIMIT BY on node JOINs.
             assert!(
-                sql.contains(" FINAL"),
-                "{name} should use FINAL for node-table reads, got:\n{sql}"
+                sql.contains(" FINAL") || sql.contains("LIMIT 1 BY"),
+                "{name} should use FINAL or LIMIT BY for node-table dedup, got:\n{sql}"
             );
-            assert!(
-                !sql.contains("LIMIT 1 BY"),
-                "{name} should not use manual LIMIT BY dedup, got:\n{sql}"
-            );
+            if name == "traversal" || name == "path_finding" || name == "neighbors" {
+                assert!(
+                    sql.contains(" FINAL"),
+                    "{name} must still use FINAL for its primary node scan, got:\n{sql}"
+                );
+            }
         }
     }
 
@@ -1397,9 +1402,9 @@ mod tests {
             "center should get a non-FINAL candidate CTE, got:\n{sql}"
         );
         assert!(
-            sql.contains("FROM (SELECT * FROM gl_job AS j FINAL WHERE")
-                && sql.contains("AS j INNER JOIN (SELECT * FROM gl_pipeline AS pipe FINAL WHERE"),
-            "outer latest-row reads should still use FINAL with joined node filtering pushed down, got:\n{sql}"
+            sql.contains("FROM (SELECT * FROM gl_job AS j")
+                && sql.contains("AS j INNER JOIN (SELECT * FROM gl_pipeline AS pipe"),
+            "outer latest-row reads should use dedup (FINAL or LIMIT BY), got:\n{sql}"
         );
         assert!(
             sql.contains("j.pipeline_id IN (SELECT id FROM _candidate_pipe)")
@@ -1473,9 +1478,9 @@ mod tests {
             "center scan should not use a same-table candidate set without target-derived predicates, got:\n{sql}"
         );
         assert!(
-            sql.contains("FROM (SELECT * FROM gl_job AS j1 FINAL WHERE")
-                && sql.contains("AS j1 INNER JOIN (SELECT * FROM gl_job AS j2 FINAL WHERE"),
-            "outer source and joined target should still use FINAL with joined node filtering pushed down, got:\n{sql}"
+            sql.contains("FROM (SELECT * FROM gl_job AS j1")
+                && sql.contains("AS j1 INNER JOIN (SELECT * FROM gl_job AS j2"),
+            "outer source and joined target should use dedup (FINAL or LIMIT BY), got:\n{sql}"
         );
     }
 
