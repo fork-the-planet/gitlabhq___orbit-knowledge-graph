@@ -75,6 +75,12 @@ pub(super) fn emit_flat_chain(plan: &Plan) -> Result<EmitOutput> {
                     hop.edge_table
                 )));
             };
+            if sort_key.is_empty() {
+                return Err(QueryError::Lowering(format!(
+                    "sort key for edge table '{}' is empty; cannot emit LIMIT BY dedup",
+                    hop.edge_table
+                )));
+            }
             let mut inner_preds = Vec::new();
             collect_edge_predicates(
                 &mut inner_preds,
@@ -219,6 +225,12 @@ pub(super) fn emit_flat_chain(plan: &Plan) -> Result<EmitOutput> {
                         None
                     };
 
+                    let table = np.table.as_deref().ok_or_else(|| {
+                        QueryError::Lowering(format!("node '{}' has no table", np.alias))
+                    })?;
+                    let node_sort_key = plan.table_sort_keys.get(table).ok_or_else(|| {
+                        QueryError::Lowering(format!("no sort key for node table '{table}'"))
+                    })?;
                     let (new_from, ns, nw) = emit_node_join_with_narrowing(
                         from,
                         np,
@@ -226,6 +238,7 @@ pub(super) fn emit_flat_chain(plan: &Plan) -> Result<EmitOutput> {
                         edge_col,
                         false,
                         narrow_source,
+                        node_sort_key,
                     )?;
                     from = new_from;
                     selects.extend(ns);
