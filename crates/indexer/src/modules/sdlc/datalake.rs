@@ -1,14 +1,12 @@
 use std::sync::Arc;
 
-use crate::clickhouse::{ArrowClickHouseClient, ArrowQuery, QuerySummary};
+use crate::clickhouse::{ArrowClickHouseClient, ArrowQuery};
 use arrow::record_batch::RecordBatch;
 use async_trait::async_trait;
 use futures::StreamExt;
-use futures::future::BoxFuture;
 use futures::stream::BoxStream;
 use serde_json::Value;
 use thiserror::Error;
-use tracing::debug;
 
 #[derive(Debug, Error)]
 pub(crate) enum DatalakeError {
@@ -27,10 +25,9 @@ impl From<clickhouse::error::Error> for DatalakeError {
 
 pub(crate) type RecordBatchStream<'a> = BoxStream<'a, Result<RecordBatch, DatalakeError>>;
 
-/// Resolves once the stream is drained, since the summary follows the body.
-pub(crate) type ReadStatsFuture = BoxFuture<'static, ReadStats>;
-
-/// ClickHouse's scanned rows/bytes (`X-ClickHouse-Summary`), for cost attribution.
+/// Rows and bytes a page actually returned from the datalake, for cost
+/// attribution. ClickHouse's scanned `X-ClickHouse-Summary` figures are not
+/// used for now; the pipeline fills these from the returned blocks.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub(crate) struct ReadStats {
     pub read_rows: u64,
@@ -52,18 +49,6 @@ pub(crate) trait DatalakeQuery: Send + Sync {
         params: Value,
         max_block_size: Option<u64>,
     ) -> Result<Vec<RecordBatch>, DatalakeError>;
-
-    /// Streams a page with its scanned-stats. The default reports zero stats;
-    /// only [`Datalake`] surfaces the real summary.
-    async fn query_arrow_with_summary(
-        &self,
-        sql: &str,
-        params: Value,
-        max_block_size: Option<u64>,
-    ) -> Result<(RecordBatchStream<'_>, ReadStatsFuture), DatalakeError> {
-        let stream = self.query_arrow(sql, params, max_block_size).await?;
-        Ok((stream, Box::pin(async { ReadStats::default() })))
-    }
 }
 
 /// Byte cap for retry blocks, keeping a block's String column under the 2GB
@@ -104,9 +89,16 @@ impl DatalakeQuery for Datalake {
         params: Value,
         max_block_size: Option<u64>,
     ) -> Result<RecordBatchStream<'_>, DatalakeError> {
-        let query = self.build_query(sql, params);
-
         let block_size = max_block_size.unwrap_or(self.default_max_block_size);
+        let mut query = self.build_query(sql, params);
+        if max_block_size.is_some() {
+            // Retry after a datalake failure (the Arrow 2GB overflow): byte-cap
+            // blocks so the retry is safe regardless of row width.
+            query = query.with_setting(
+                "preferred_block_size_bytes",
+                RETRY_PREFERRED_BLOCK_SIZE_BYTES,
+            );
+        }
         let stream = query
             .fetch_arrow_streamed(block_size)
             .await
@@ -134,57 +126,5 @@ impl DatalakeQuery for Datalake {
         }
 
         Ok(batches)
-    }
-
-    async fn query_arrow_with_summary(
-        &self,
-        sql: &str,
-        params: Value,
-        max_block_size: Option<u64>,
-    ) -> Result<(RecordBatchStream<'_>, ReadStatsFuture), DatalakeError> {
-        let block_size = max_block_size.unwrap_or(self.default_max_block_size);
-        let mut query = self.build_query(sql, params);
-        if max_block_size.is_some() {
-            // Retry after a datalake failure (the Arrow 2GB overflow): byte-cap
-            // blocks so the retry is safe regardless of row width.
-            query = query.with_setting(
-                "preferred_block_size_bytes",
-                RETRY_PREFERRED_BLOCK_SIZE_BYTES,
-            );
-        }
-        let (stream, summary) = query
-            .fetch_arrow_streamed_with_summary(block_size)
-            .await
-            .map_err(|e| DatalakeError::Query(e.to_string()))?;
-
-        let stream = stream
-            .map(|result| result.map_err(|e| DatalakeError::Query(e.to_string())))
-            .boxed();
-        let read_stats = Box::pin(async move {
-            summary
-                .await
-                .ok()
-                .flatten()
-                .map(read_stats_from_summary)
-                .unwrap_or_default()
-        });
-
-        Ok((stream, read_stats))
-    }
-}
-
-fn read_stats_from_summary(summary: QuerySummary) -> ReadStats {
-    let read_rows = summary.read_rows();
-    let read_bytes = summary.read_bytes();
-    if read_rows.is_none() || read_bytes.is_none() {
-        debug!(
-            ?read_rows,
-            ?read_bytes,
-            "datalake summary missing read_rows/read_bytes; defaulting to 0"
-        );
-    }
-    ReadStats {
-        read_rows: read_rows.unwrap_or(0),
-        read_bytes: read_bytes.unwrap_or(0),
     }
 }

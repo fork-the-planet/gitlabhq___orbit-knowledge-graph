@@ -15,9 +15,7 @@ use crate::handler::HandlerError;
 use crate::nats::ProgressNotifier;
 use crate::observer::IndexingObserver;
 
-use super::datalake::{
-    DatalakeError, DatalakeQuery, ReadStats, ReadStatsFuture, RecordBatchStream,
-};
+use super::datalake::{DatalakeError, DatalakeQuery, ReadStats, RecordBatchStream};
 use super::metrics::SdlcMetrics;
 use super::plan::{Cursor, CursorFilter, Plan, PreparedQuery};
 use super::transform::{BlockTransform, TableBatch, TransformRegistry};
@@ -42,7 +40,8 @@ enum WriteCommand {
     },
 }
 
-/// `read_*` are ClickHouse's scanned figures; `written_*` the transformed bytes inserted.
+/// `read_*` count the rows/bytes actually returned from the datalake;
+/// `written_*` the transformed rows/bytes inserted.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub(in crate::modules::sdlc) struct PipelineStats {
     pub read_rows: u64,
@@ -331,9 +330,9 @@ impl Extractor {
         &self,
         sql: &str,
         max_block_size: Option<u64>,
-    ) -> Result<(RecordBatchStream<'_>, ReadStatsFuture), DatalakeError> {
+    ) -> Result<RecordBatchStream<'_>, DatalakeError> {
         self.datalake
-            .query_arrow_with_summary(sql, self.params.clone(), max_block_size)
+            .query_arrow(sql, self.params.clone(), max_block_size)
             .await
     }
 }
@@ -481,7 +480,7 @@ impl Producer {
         max_block_size: Option<u64>,
     ) -> Result<Option<PageStats>, PageError> {
         let extract_start = Instant::now();
-        let (mut stream, read_stats) = self
+        let mut stream = self
             .extractor
             .open(page_sql, max_block_size)
             .await
@@ -519,8 +518,12 @@ impl Producer {
             }
         }
 
-        // The summary arrives only after the page's body is fully read.
-        let read_stats = read_stats.await;
+        // Stats reflect the data actually returned; ClickHouse's scanned
+        // X-ClickHouse-Summary figures are unused for now.
+        let read_stats = ReadStats {
+            read_rows: page_rows,
+            read_bytes: page_bytes,
+        };
 
         Ok(Some(PageStats {
             cursor: page_cursor,
@@ -1212,10 +1215,9 @@ mod tests {
         assert!(result.is_ok());
     }
 
-    /// Returns one page plus a fixed `ReadStats` from its summary, then nothing.
+    /// Returns one page of `rows`, then nothing.
     struct StatsDatalake {
         rows: usize,
-        read_stats: ReadStats,
         calls: Mutex<u32>,
     }
 
@@ -1227,7 +1229,14 @@ mod tests {
             _params: Value,
             _max_block_size: Option<u64>,
         ) -> Result<RecordBatchStream<'_>, DatalakeError> {
-            Ok(Box::pin(futures::stream::empty()))
+            let mut calls = self.calls.lock().unwrap();
+            *calls += 1;
+            let blocks: Vec<Result<RecordBatch, DatalakeError>> = if *calls == 1 {
+                vec![Ok(test_batch(self.rows))]
+            } else {
+                vec![]
+            };
+            Ok(Box::pin(futures::stream::iter(blocks)))
         }
 
         async fn query_batches(
@@ -1238,36 +1247,12 @@ mod tests {
         ) -> Result<Vec<RecordBatch>, DatalakeError> {
             Ok(vec![])
         }
-
-        async fn query_arrow_with_summary(
-            &self,
-            _sql: &str,
-            _params: Value,
-            _max_block_size: Option<u64>,
-        ) -> Result<(RecordBatchStream<'_>, ReadStatsFuture), DatalakeError> {
-            let mut calls = self.calls.lock().unwrap();
-            *calls += 1;
-            let (blocks, stats): (Vec<Result<RecordBatch, DatalakeError>>, ReadStats) =
-                if *calls == 1 {
-                    (vec![Ok(test_batch(self.rows))], self.read_stats)
-                } else {
-                    (vec![], ReadStats::default())
-                };
-            Ok((
-                Box::pin(futures::stream::iter(blocks)),
-                Box::pin(async move { stats }),
-            ))
-        }
     }
 
     #[tokio::test]
     async fn run_plan_reports_resource_stats() {
         let datalake = Arc::new(StatsDatalake {
             rows: 5,
-            read_stats: ReadStats {
-                read_rows: 5,
-                read_bytes: 4096,
-            },
             calls: Mutex::new(0),
         });
         let pipeline = Pipeline::new(
@@ -1289,8 +1274,14 @@ mod tests {
             .await
             .expect("run should succeed");
 
-        assert_eq!(stats.read_rows, 5, "read rows come from the summary");
-        assert_eq!(stats.read_bytes, 4096, "read bytes come from the summary");
+        assert_eq!(
+            stats.read_rows, 5,
+            "read rows count the rows actually returned"
+        );
+        assert!(
+            stats.read_bytes > 0,
+            "read bytes reflect the data actually returned"
+        );
         assert_eq!(
             stats.written_rows, 5,
             "transform emits the 5 extracted rows"
