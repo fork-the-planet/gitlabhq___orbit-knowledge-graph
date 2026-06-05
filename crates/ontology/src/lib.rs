@@ -33,9 +33,9 @@ pub use entities::{
     DenormalizedProperty, DerivedEntity, DictionaryLayout, DictionaryLifetime, DomainInfo,
     EdgeColumn, EdgeEndpoint, EdgeEndpointType, EdgeEntity, EdgeSourceEtlConfig, EdgeTableStorage,
     EdgeVariantScope, EnumType, Field, FieldSelectivity, FieldSource, MaterializedViewDefinition,
-    NodeEntity, NodeStorage, NodeStyle, RedactionConfig, RequiredRole, StorageColumn, StorageIndex,
-    StorageProjection, TraversalPathKind, TraversalPathLookup, TraversalPathLookupSpec,
-    VirtualSource,
+    NodeEntity, NodeStorage, NodeStyle, RedactionConfig, RequiredRole, StatisticsConfig,
+    StatisticsExclude, StorageColumn, StorageIndex, StorageProjection, TraversalPathKind,
+    TraversalPathLookup, TraversalPathLookupSpec, VirtualSource,
 };
 pub use etl::{DEFAULT_TRANSFORM, EdgeDirection, EdgeMapping, EdgeTarget, EtlConfig, EtlScope};
 
@@ -149,6 +149,7 @@ pub struct Ontology {
     pub(crate) derived_entities: BTreeMap<String, DerivedEntity>,
     /// Materialized views defined in the ontology settings.
     pub(crate) materialized_views: Vec<MaterializedViewDefinition>,
+    pub(crate) statistics: Option<StatisticsConfig>,
     pub(crate) traversal_path_lookups: Vec<TraversalPathLookup>,
 }
 
@@ -203,6 +204,7 @@ impl Ontology {
             denormalized_properties: Vec::new(),
             derived_entities: BTreeMap::new(),
             materialized_views: Vec::new(),
+            statistics: None,
             traversal_path_lookups: Vec::new(),
         }
     }
@@ -574,6 +576,13 @@ impl Ontology {
             if let Some(dict) = lookup.dictionary.as_mut() {
                 *dict = format!("{prefix}{dict}");
             }
+        }
+
+        if let Some(ref mut stats) = self.statistics {
+            stats.stats_table = format!("{prefix}{}", stats.stats_table);
+            stats.histogram_table = format!("{prefix}{}", stats.histogram_table);
+            stats.token_table = format!("{prefix}{}", stats.token_table);
+            stats.dictionary = format!("{prefix}{}", stats.dictionary);
         }
 
         self
@@ -1079,6 +1088,77 @@ impl Ontology {
     #[must_use]
     pub fn materialized_views(&self) -> &[MaterializedViewDefinition] {
         &self.materialized_views
+    }
+
+    #[must_use]
+    pub fn statistics(&self) -> Option<&StatisticsConfig> {
+        self.statistics.as_ref()
+    }
+
+    /// Returns the partition key column for a given entity's statistics MV,
+    /// or `None` if the entity lacks the configured partition column (global
+    /// entities like User, Runner get an empty partition key).
+    #[must_use]
+    pub fn stats_partition_key_for(&self, entity: &str) -> Option<&str> {
+        let config = self.statistics.as_ref()?;
+        let node = self.nodes.get(entity)?;
+        if node.fields.iter().any(|f| f.name == config.partition_key) {
+            Some(&config.partition_key)
+        } else {
+            None
+        }
+    }
+
+    /// Categorize a node entity's filterable fields into stat types.
+    /// Returns (categorical, token, histogram) column name lists.
+    /// Skips: uuid, virtual, filterable:false, and excluded columns.
+    #[must_use]
+    pub fn stats_columns_for(&self, entity: &str) -> (Vec<&str>, Vec<&str>, Vec<&str>) {
+        if self.statistics.is_none() {
+            return (vec![], vec![], vec![]);
+        }
+        let excluded: std::collections::HashSet<&str> = self
+            .statistics
+            .as_ref()
+            .map(|s| {
+                s.exclude
+                    .iter()
+                    .filter(|e| e.node == entity)
+                    .flat_map(|e| e.columns.iter().map(String::as_str))
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        let node = match self.nodes.get(entity) {
+            Some(n) => n,
+            None => return (vec![], vec![], vec![]),
+        };
+
+        let mut categorical = vec![];
+        let mut token = vec![];
+        let mut histogram = vec![];
+
+        for field in &node.fields {
+            if field.is_virtual() || !field.filterable || excluded.contains(field.name.as_str()) {
+                continue;
+            }
+            match field.data_type {
+                DataType::Bool | DataType::Enum => categorical.push(field.name.as_str()),
+                DataType::String => {
+                    if field.selectivity == FieldSelectivity::Low {
+                        categorical.push(field.name.as_str());
+                    } else {
+                        token.push(field.name.as_str());
+                    }
+                }
+                DataType::Int | DataType::Float | DataType::Date | DataType::DateTime => {
+                    histogram.push(field.name.as_str());
+                }
+                DataType::Uuid => {} // skip: selectivity is always 1/row_count
+            }
+        }
+
+        (categorical, token, histogram)
     }
 
     #[must_use]

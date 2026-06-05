@@ -53,6 +53,8 @@ pub(super) struct SettingsYaml {
     pub edge_tables: BTreeMap<String, EdgeTableYaml>,
     #[serde(default)]
     pub denormalization: Vec<DenormalizationEntryYaml>,
+    #[serde(default)]
+    pub statistics: Option<StatisticsYaml>,
     pub internal_column_prefix: String,
     #[serde(default)]
     pub skip_security_filter_for_entities: Vec<String>,
@@ -81,6 +83,26 @@ pub(super) struct MaterializedViewYaml {
     pub order_by: Vec<String>,
     #[serde(default)]
     pub populate: bool,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub(super) struct StatisticsYaml {
+    pub stats_table: String,
+    pub histogram_table: String,
+    pub token_table: String,
+    pub dictionary: String,
+    pub lifetime: DictionaryLifetimeYaml,
+    pub histogram_buckets: u16,
+    pub top_k_tokens: u16,
+    pub partition_key: String,
+    #[serde(default)]
+    pub exclude: Vec<StatisticsExcludeYaml>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub(super) struct StatisticsExcludeYaml {
+    pub node: String,
+    pub columns: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
