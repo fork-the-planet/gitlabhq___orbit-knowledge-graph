@@ -1,3 +1,9 @@
+## [0.70.1](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.70.0...v0.70.1) (2026-06-05)
+
+### Fixes
+
+* **indexer:** specify user in dictionary CLICKHOUSE source ([4b20cf9](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/4b20cf9735b053233b2f4d534a9e2a6088c5f99d)) by Jean-Gabriel Doyon
+
 ## [0.70.0](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.69.0...v0.70.0) (2026-06-05)
 
 ### Features
