@@ -1,3 +1,27 @@
+## [0.72.0](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.71.0...v0.72.0) (2026-06-07)
+
+### Features
+
+* **profiler:** correlate every query of a run via one correlation id ([6e5b0d6](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/6e5b0d6b3c678258b8fa5e18d005ff4539b76881)) by Michael Angelo Rivera
+* **profiler:** resolve scope prefixes so the profiler matches prod ([3564b8e](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/3564b8e18acd26696b687e023b9b5a8a64fd582a)) by Michael Angelo Rivera
+
+### Fixes
+
+* **schema:** restore edge reorder projections and tighten bloom filters ([7a8b454](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/7a8b454cf0e5568bd30d44a66ccf4bef68120b59)) by Michael Usachenko
+
+### Performance
+
+* **compiler:** scope neighbors queries with exact-tp incoming and arm pruning ([31f8550](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/31f855056c883db42afd5a32a2efea1056ac93f7)) by Michael Angelo Rivera
+* **graph_status:** count entities via tp_count projection ([4063277](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/4063277133e011894711f7aee1348ae3e78e6567)) by Michael Angelo Rivera
+* **query:** extend traversal_path scope-prune to payload and hub edges ([6a009df](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/6a009dfa73d3828e1ba9901344244110c79a9817)) by Michael Angelo Rivera
+* **query:** join FK chains as node joins and fix FK-edge denorm ([421af0f](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/421af0f611084439b92eceadfd6cdc586d9adc53)) by Michael Angelo Rivera
+* **query:** scope diff traversals from pinned merge request ids ([2356381](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/23563813dcade0359428003ae1eb791a57b5af0d)) by Michael Angelo Rivera
+
+### Other
+
+* **profiler:** per-query metrics, drop dead query_log backfill ([2bd2b9b](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/2bd2b9b3596d485491115602c41a92035b396aa6)) by Michael Angelo Rivera
+* **query-engine:** add categorized query corpus + CI smoke test ([502625b](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/502625b71ab8b36a5413c5b2666ef15829d4f2db)) by Michael Angelo Rivera
+
 ## [0.71.0](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.70.1...v0.71.0) (2026-06-05)
 
 ### Features
