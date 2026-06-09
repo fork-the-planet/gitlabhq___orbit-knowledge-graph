@@ -1,3 +1,13 @@
+## [0.73.1](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.73.0...v0.73.1) (2026-06-09)
+
+### Fixes
+
+* **compiler:** tighten cascade anchor guard to pinned-ids only ([297d1ac](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/297d1ac97b5328e802a545c4dd92162326c8cb4c)) by Michael Usachenko
+
+### Performance
+
+* **compiler:** drop DISTINCT from IN-subquery candidate scans ([8599ece](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/8599ece8aa2da56748b2daf17e4e4ef261ef1416)) by Michael Usachenko
+
 ## [0.73.0](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.72.1...v0.73.0) (2026-06-08)
 
 ### Features
