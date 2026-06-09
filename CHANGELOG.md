@@ -1,3 +1,9 @@
+## [0.73.2](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.73.1...v0.73.2) (2026-06-09)
+
+### Performance
+
+* **compiler:** recursive cascade anchor nesting with scope-only fallback ([cc98ecf](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/cc98ecf21ffa2c27f686ffadbc75b3284836c89e)) by Michael Usachenko
+
 ## [0.73.1](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.73.0...v0.73.1) (2026-06-09)
 
 ### Fixes
