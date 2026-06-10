@@ -40,6 +40,7 @@ CLI integration tests (concurrency, worktrees): `mise test:cli`.
 - Skill version bumped when files under `skills/<name>/` change (`skill-version-bump-check`)
 - Metrics catalog regenerated in sync with `gkg-observability` source (`metrics-catalog-check`)
 - Vendored Iglu schemas match pinned versions and live Iglu server (`iglu-schema-check`)
+- Vendored system-note action list matches upstream Rails `ICON_TYPES` at the pinned SHA (`system-note-actions-check`)
 
 ## Where to find things
 
