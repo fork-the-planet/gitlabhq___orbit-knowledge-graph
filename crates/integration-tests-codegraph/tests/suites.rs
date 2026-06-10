@@ -262,6 +262,7 @@ yaml_test!(
 yaml_test!(cpp_resolution, "cpp/resolution.yaml");
 yaml_test!(cpp_cross_language, "cpp/cross_language.yaml");
 yaml_test!(cpp_hardcore, "cpp/hardcore.yaml");
+yaml_test!(cpp_templates, "cpp/templates.yaml");
 
 // PHP
 yaml_test!(php_resolution, "php/resolution.yaml");
