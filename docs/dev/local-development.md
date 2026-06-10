@@ -67,16 +67,19 @@ ClickHouse from your GDK installation.
    clickhouse client --host localhost --port 9001 --query "CREATE DATABASE IF NOT EXISTS \`gkg-development\`"
    ```
 
-   Apply the graph schema (each statement separately since ClickHouse
-   doesn't support multi-statement execution):
+   Apply the graph schema using the helper script (it applies each
+   statement individually since ClickHouse does not support
+   multi-statement DDL execution):
 
    ```shell
-   sed 's/--.*$//' config/graph.sql | tr '\n' ' ' | sed 's/;/;\n/g' | \
-     while IFS= read -r stmt; do
-       [ -n "$stmt" ] && clickhouse client --host localhost --port 9001 \
-         --database gkg-development --query "$stmt"
-     done
+   scripts/apply-graph-schema.sh
    ```
+
+   The script defaults to `localhost:9001` and database
+   `gkg-development`. Override with `--host`, `--port`, or
+   `--database` flags, or set `CLICKHOUSE_HOST`, `CLICKHOUSE_PORT`,
+   `CLICKHOUSE_DATABASE` environment variables. Run with `--dry-run`
+   to preview statements without executing.
 
    Or skip both steps and run `mise run dev:setup` later (see [Setup](#setup)).
 
@@ -345,8 +348,13 @@ Protect the file from being overwritten by adding `siphon/config.yml` to
 
 **ClickHouse connection issues:**
 
+ClickHouse exposes two ports: the **native TCP port** (`9001` in GDK)
+used by `clickhouse client`, and the **HTTP port** (`8123`) used for
+health checks and REST-style queries.
+
 - Verify ClickHouse is running: `gdk status clickhouse`
 - Check HTTP port: `curl "http://localhost:8123/ping"`
+- Check native port: `clickhouse client --host localhost --port 9001 --query "SELECT 1"`
 
 **No data in graph:**
 
