@@ -145,7 +145,7 @@ struct ErroredFile {
 }
 
 #[derive(Parser)]
-#[command(name = "orbit")]
+#[command(name = "orbit", version = env!("ORBIT_VERSION"))]
 #[command(about = "Orbit - local code indexing and query CLI")]
 struct Cli {
     #[command(subcommand)]
