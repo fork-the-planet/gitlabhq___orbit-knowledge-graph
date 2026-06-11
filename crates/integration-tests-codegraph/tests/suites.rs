@@ -310,6 +310,7 @@ yaml_test!(
     "csharp/imported_symbol_fallback_matrix.yaml"
 );
 yaml_test!(csharp_aliased_using, "csharp/aliased_using.yaml");
+yaml_test!(csharp_structs, "csharp/structs.yaml");
 
 // Ruby
 yaml_test!(ruby_v1_resolution, "ruby/v1_resolution.yaml");
