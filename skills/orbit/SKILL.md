@@ -1,7 +1,7 @@
 ---
 name: orbit
 description: Query the GitLab Knowledge Graph (Orbit) via `glab orbit remote` CLI subcommands or run a local copy with `glab orbit local`. Use for code-structure questions (who calls this function, where is this symbol defined), cross-project dependency and blast-radius analysis, merge-request and contributor queries, and any question answerable by traversing GitLab's unified entity graph (projects, users, MRs, issues, pipelines, files, definitions, vulnerabilities).
-version: 0.13.5
+version: 0.13.6
 license: MIT
 metadata:
   audience: developers
@@ -18,33 +18,9 @@ always go through `glab orbit remote`.
 
 ## Prerequisites
 
-Before using Orbit, verify:
-1. `glab` installed with Orbit extension
-    ```sh
-    glab --version     # need 1.94.0+
-    glab orbit --help  # should show orbit subcommands
-    ```
-   If `glab` not already installed, follow [the install instructions](https://gitlab.com/gitlab-org/cli#installation)
-2. `glab` authenticated to GitLab
-    ```sh
-    # check authentication status
-    glab auth status
-
-    # if not authenticated:
-    glab auth login
-    ```
-3. Orbit Remote: feature flag enabled for namespace
-    ```sh
-    glab orbit remote graph-status --full-path GROUP_NAMESPACE
-    # exit code 0 = ready to query
-    # exit code 2 = feature flag not enabled. Contact your GitLab admin
-    ```
-4. Orbit Local: no server needed
-    ```sh
-    glab orbit local --install --yes  # installs the orbit binary
-    orbit index /path/to/your/repo    # index a local repo
-    ```
-    If running `orbit` displays `cannot find command`, then add `"$HOME/.config/glab-cli/bin/"` (for Linux/macOS) to `PATH` environment variable
+If `glab orbit` commands fail (command not found, auth errors, feature-flag
+exit codes), work through the first-run setup checklist in
+[`references/prerequisites.md`](references/prerequisites.md).
 
 ## Discovery
 
@@ -169,6 +145,7 @@ pass-through args: [`references/local_cli.md`](references/local_cli.md).
 
 | Topic | Location |
 |---|---|
+| First-run setup checklist (install, auth, feature flag) | [`references/prerequisites.md`](references/prerequisites.md) |
 | Full DSL reference | [`references/query_language.md`](references/query_language.md) |
 | Paste-ready bodies per `query_type` | [`references/recipes.md`](references/recipes.md) |
 | Reporting results & coverage caveats | [`references/reporting.md`](references/reporting.md) |
