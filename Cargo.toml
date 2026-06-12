@@ -120,7 +120,7 @@ proc-macro2 = "1.0.106"
 
 # Iglu schema codegen (build-time only; consumed by gkg-analytics/build.rs)
 prettyplease = "0.2.37"
-typify = "0.6.2"
+typify = "0.7.0"
 
 # JS/TS ecosystem (v2 custom pipeline)
 oxc = { git = "https://github.com/oxc-project/oxc", rev = "83328b6", features = ["semantic", "ast_visit"] }
