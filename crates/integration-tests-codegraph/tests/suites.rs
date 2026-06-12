@@ -79,6 +79,7 @@ yaml_test!(
 );
 yaml_test!(typescript_export_dedup, "typescript/export_dedup.yaml");
 yaml_test!(typescript_line_indexing, "typescript/line_indexing.yaml");
+yaml_test!(typescript_abstract_class, "typescript/abstract_class.yaml");
 yaml_test!(
     react_jsx_component_matrix,
     "react/jsx_component_matrix.yaml"
