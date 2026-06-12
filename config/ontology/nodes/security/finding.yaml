@@ -22,12 +22,14 @@ properties:
     type: int64
     source: id
     nullable: false
+    mutable: false
     description: "Unique ID."
 
   uuid:
     type: uuid
     source: uuid
     nullable: false
+    mutable: false
     description: "Unique UUID."
 
   name:
@@ -71,24 +73,28 @@ properties:
     type: uuid
     source: overridden_uuid
     nullable: false
+    mutable: false
     description: "UUID of the overridden finding."
 
   project_id:
     type: int64
     source: project_id
     nullable: false
+    mutable: false
     description: "Owning project ID."
 
   scan_id:
     type: int64
     source: scan_id
     nullable: false
+    mutable: false
     description: "Producing security scan ID."
 
   scanner_id:
     type: int64
     source: scanner_id
     nullable: false
+    mutable: false
     description: "Detecting scanner ID."
 
   traversal_path:

@@ -21,12 +21,14 @@ properties:
     type: int64
     source: id
     nullable: false
+    mutable: false
     description: "Unique ID."
 
   iid:
     type: int64
     source: iid
     nullable: false
+    mutable: false
     description: "Scoped work item number."
 
   title:
@@ -93,6 +95,7 @@ properties:
     type: timestamp
     source: created_at
     nullable: true
+    mutable: false
     description: "Creation timestamp."
 
   updated_at:
@@ -111,12 +114,14 @@ properties:
     type: int64
     source: project_id
     nullable: true
+    mutable: false
     description: "Owning project ID. Null for group-scoped."
 
   author_id:
     type: int64
     source: author_id
     nullable: true
+    mutable: false
     description: "Author user ID."
 
   milestone_id:
@@ -129,6 +134,7 @@ properties:
     type: int64
     source: namespace_id
     nullable: false
+    mutable: false
     description: "Owning namespace (group) ID."
 
   closed_by_id:
