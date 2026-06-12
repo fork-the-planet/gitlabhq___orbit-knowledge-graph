@@ -182,6 +182,10 @@ struct PropertyYaml {
     description: Option<String>,
     #[serde(default)]
     traversal_path_lookup: Option<TraversalPathLookupYaml>,
+    #[serde(default)]
+    mutable: bool,
+    #[serde(default)]
+    terminal_values: Option<Vec<String>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -361,6 +365,8 @@ impl NodeYaml {
                             key_column: l.key_column,
                         }
                     }),
+                    mutable: prop_def.mutable,
+                    terminal_values: prop_def.terminal_values,
                 })
             })
             .collect::<Result<Vec<_>, _>>()?;

@@ -22,12 +22,14 @@ properties:
     type: int64
     source: id
     nullable: false
+    mutable: false
     description: "Unique ID."
 
   uuid:
     type: uuid
     source: uuid
     nullable: false
+    mutable: false
     description: "Unique UUID."
 
   name:
@@ -83,6 +85,7 @@ properties:
     type: enum
     source: report_type
     nullable: false
+    mutable: false
     description: "Security report type."
     values:
       0: sast
@@ -101,6 +104,7 @@ properties:
     type: enum
     source: detection_method
     nullable: false
+    mutable: false
     description: "Detection method."
     values:
       0: gitlab_security_report
@@ -113,6 +117,7 @@ properties:
     type: timestamp
     source: created_at
     nullable: false
+    mutable: false
     description: "Creation timestamp."
 
   updated_at:
@@ -131,12 +136,14 @@ properties:
     type: int64
     source: project_id
     nullable: false
+    mutable: false
     description: "Owning project ID."
 
   scanner_id:
     type: int64
     source: scanner_id
     nullable: false
+    mutable: false
     description: "Detecting scanner ID."
 
   vulnerability_id:
@@ -149,6 +156,7 @@ properties:
     type: int64
     source: primary_identifier_id
     nullable: false
+    mutable: false
     description: "Primary identifier (CVE/CWE) ID."
 
   traversal_path:
