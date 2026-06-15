@@ -1,3 +1,14 @@
+## [0.75.1](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.75.0...v0.75.1) (2026-06-15)
+
+### Fixes
+
+* **indexer:** purge code scratch dir on startup ([d307b7b](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/d307b7b169a00d3da8aab1d3111e7c6c4fa95fcc)) by Bohdan Parkhomchuk
+* **ontology:** remove empty CI-runner attribution edges ([4061dee](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/4061deee1c6373d1c6681ed7ab453076d97f5a7c)) by Jean-Gabriel Doyon
+
+### Other
+
+* **i18n:** add Japanese translations for documentation ([6a9b1f7](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/6a9b1f7ba07346b719931994691fb44c947a298e)) by Lauren Barker
+
 ## [0.75.0](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.74.0...v0.75.0) (2026-06-15)
 
 ### Features
