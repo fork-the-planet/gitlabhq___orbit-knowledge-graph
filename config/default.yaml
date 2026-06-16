@@ -175,4 +175,7 @@ billing:
     # api_token: ""
 
 features:
-  system_notes: false
+  system_notes:
+    enabled: false
+    # Root namespace ids the flag applies to. Empty = every namespace.
+    namespaces: []
