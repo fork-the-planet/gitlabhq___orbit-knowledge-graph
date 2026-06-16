@@ -1,3 +1,31 @@
+## [0.76.0](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.75.1...v0.76.0) (2026-06-16)
+
+### Features
+
+* **config:** bump ClickHouse query size and AST limits ([244c260](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/244c26054cd7a457304678216e90e98c6897a207)) by Michael Usachenko
+* **config:** scope feature flags to specific namespaces ([229fac1](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/229fac14a4f0c6f7dfe0f3b4cea38b3b5f95e215)) by Jean-Gabriel Doyon
+* **docs:** auto-derive text-indexed properties table from ontology ([948f510](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/948f510641c54a08fca57d71320d02dddc22bb15)) by Dmitry Gruzd
+* **indexer:** route epic and task system_note actions to edges ([a59be21](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/a59be21593227aa1eeb2cb6d29971573e0ac8fc0)) by Dmitry Gruzd
+
+### Fixes
+
+* always use OR chain for traversal path filters ([888ed03](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/888ed0301637a55d0885c6db9a67d5c3b667c4ed)) by Michael Usachenko
+* **analytics:** drop no-op indexing events and restore default batch size ([822b74a](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/822b74aa84eba294238db11e2817bb0cfb9eb804)) by Jean-Gabriel Doyon
+* **ci:** fetch merge base SHA so skip tags in commit messages are found ([bc3fb1a](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/bc3fb1aa4b7ff9e5cf393a87c5c9be152d88861d)) by Michael Usachenko
+* **e2e:** restore _siphon_watermark patch (siphon still omits the column on some tables) ([ad8f637](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/ad8f6379261b8cc95a58a959748513a83b5d1afc)) by Jean-Gabriel Doyon
+* **indexer:** also drop non-ontology orphans in dead-version GC sweep ([45de343](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/45de34338f6f42ecc9b39bf3792f9b1db62dbd46)) by Michael Usachenko
+* **indexer:** read all probe batches and warn on silent partition fallback ([07cd6e0](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/07cd6e0c5c734a42fede659aa0f68275302e9665)) by Jean-Gabriel Doyon
+
+### Performance
+
+* **compiler:** use FINAL instead of LIMIT 1 BY in FK-chain node scans ([988848f](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/988848f967a00a4ff6af0f93888c943f2b91fd26)) by Michael Usachenko
+
+### Other
+
+* **e2e:** bump gitlab pins and drop _siphon_watermark patch ([12e92a7](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/12e92a71a07439f5a88925e19cd6de9010a5a6f2)) by Jean-Gabriel Doyon
+* restructure design README as-built-first ([0d20588](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/0d2058808d2827690cc085aa6a0a9fc1792d54bc)) by Dmitry Gruzd
+* tense pass on sdlc_indexing.md (future → as-built) ([1647878](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/164787836fa98ae6db39b5000f0e8a2499eede51)) by Dmitry Gruzd
+
 ## [0.75.1](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.75.0...v0.75.1) (2026-06-15)
 
 ### Fixes
