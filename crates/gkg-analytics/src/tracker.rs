@@ -15,9 +15,7 @@ pub struct SnowplowAnalyticsTracker {
 
 impl SnowplowAnalyticsTracker {
     pub fn from_config(config: &AnalyticsConfig) -> Result<Self, labkit_events::Error> {
-        let tracker = labkit_events::Tracker::builder(&config.collector_url, APP_ID)
-            .batch_size(1)
-            .build()?;
+        let tracker = labkit_events::Tracker::builder(&config.collector_url, APP_ID).build()?;
         Ok(Self {
             tracker: Arc::new(tracker),
         })

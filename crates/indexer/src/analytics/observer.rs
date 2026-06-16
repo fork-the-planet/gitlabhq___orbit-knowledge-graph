@@ -2,7 +2,8 @@
 //! `finish`, emits one `gkg_indexing_completed` event with the run's resource
 //! cost: an `orbit_sdlc_indexing` or `orbit_code_indexing` context alongside
 //! `orbit_common`. Errored runs are skipped so partial costs don't pollute
-//! the cost-attribution dataset.
+//! the cost-attribution dataset, and no-op runs (idle incremental polls that
+//! read and wrote nothing) are skipped so they don't flood the collector.
 
 use std::sync::Arc;
 
@@ -107,6 +108,17 @@ impl SnowplowIndexingObserver {
             TriggerType::Scheduled
         } else {
             TriggerType::Push
+        }
+    }
+
+    /// A run that read and wrote nothing is an idle incremental poll: the SDLC
+    /// scheduler re-dispatches every namespace every minute, so emitting these
+    /// would flood the analytics collector with no-op events that carry no cost.
+    fn did_work(&self) -> bool {
+        match self.pipeline_type {
+            Some(PipelineType::Sdlc) => self.read_rows > 0 || self.written_rows > 0,
+            Some(PipelineType::Code) => self.files_discovered > 0 || self.written_rows > 0,
+            None => false,
         }
     }
 
@@ -284,7 +296,7 @@ impl IndexingObserver for SnowplowIndexingObserver {
     }
 
     fn finish(&mut self) {
-        if self.emitted || self.errored {
+        if self.emitted || self.errored || !self.did_work() {
             return;
         }
         self.emitted = true;
@@ -411,6 +423,7 @@ mod tests {
         obs.set_pipeline_type(PipelineType::Code);
         obs.set_project(1, "main");
         obs.set_traversal_path(Some("42/100/"));
+        obs.files_processed(1, 1, 0);
         obs.finish();
 
         let events = tracker.drain();
@@ -463,6 +476,7 @@ mod tests {
         obs.set_pipeline_type(PipelineType::Sdlc);
         obs.set_entity_type("User");
         obs.set_indexing_mode(IndexingMode::Full);
+        obs.record_graph_write("gl_user", 10, 500);
         obs.finish();
 
         let events = tracker.drain();
@@ -485,12 +499,40 @@ mod tests {
     }
 
     #[test]
+    fn empty_sdlc_poll_emits_nothing() {
+        let tracker = Arc::new(InMemoryAnalyticsTracker::new());
+        let mut obs = observer(&tracker);
+        obs.set_dispatch_id(Uuid::nil());
+        obs.set_pipeline_type(PipelineType::Sdlc);
+        obs.set_entity_type("MergeRequest");
+        obs.set_traversal_path(Some("42/100/"));
+        obs.set_indexing_mode(IndexingMode::Incremental);
+        obs.record_datalake_scan(80_000, 4_000_000);
+        obs.record_duration(12_000);
+        obs.finish();
+        assert_eq!(tracker.count(), 0);
+    }
+
+    #[test]
+    fn empty_code_run_emits_nothing() {
+        let tracker = Arc::new(InMemoryAnalyticsTracker::new());
+        let mut obs = observer(&tracker);
+        obs.set_dispatch_id(Uuid::nil());
+        obs.set_pipeline_type(PipelineType::Code);
+        obs.set_project(1, "main");
+        obs.record_duration(12_000);
+        obs.finish();
+        assert_eq!(tracker.count(), 0);
+    }
+
+    #[test]
     fn finish_is_idempotent() {
         let tracker = Arc::new(InMemoryAnalyticsTracker::new());
         let mut obs = observer(&tracker);
         obs.set_dispatch_id(Uuid::nil());
         obs.set_pipeline_type(PipelineType::Code);
         obs.set_project(1, "main");
+        obs.files_processed(1, 1, 0);
         obs.finish();
         obs.finish();
         assert_eq!(tracker.count(), 1);
