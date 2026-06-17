@@ -334,6 +334,11 @@ impl CodeIndexingPipeline {
                     handle.block_on(progress.notify_in_progress());
                 }));
             }));
+        let phase_cpu_metrics = self.metrics.clone();
+        let on_phase_cpu: Option<code_graph::v2::PhaseCpuObserver> =
+            Some(std::sync::Arc::new(move |language, cpu| {
+                phase_cpu_metrics.record_file_phase_cpu(language, cpu)
+            }));
         let config = PipelineConfig {
             max_file_size: self.pipeline_config.max_file_size_bytes,
             max_files: self.pipeline_config.max_files,
@@ -345,6 +350,7 @@ impl CodeIndexingPipeline {
             per_file_ssa_timeout,
             cross_file_resolve_timeout,
             on_progress,
+            on_phase_cpu,
             ..Default::default()
         };
         let tracer = code_graph::v2::trace::Tracer::new(false);
@@ -423,6 +429,28 @@ impl CodeIndexingPipeline {
             .record_phase_timing(&result.stats.phase_timings);
         for lt in &result.stats.language_timings {
             self.metrics.record_language_timing(lt);
+        }
+
+        // Name the few genuinely-slow files so an engineer can open them; the
+        // per-phase CPU distribution lives in the phase_cpu_duration histogram.
+        const SLOW_FILE_LOG_THRESHOLD_MS: f64 = 500.0;
+        const SLOW_FILE_LOG_MAX: usize = 10;
+        for entry in result
+            .stats
+            .slowest_files
+            .iter()
+            .filter(|e| e.total_ms >= SLOW_FILE_LOG_THRESHOLD_MS)
+            .take(SLOW_FILE_LOG_MAX)
+        {
+            info!(
+                path = %entry.path,
+                language = %entry.language,
+                size_bytes = entry.size_bytes,
+                parse_ms = entry.parse_ms,
+                resolve_ms = entry.resolve_ms,
+                total_ms = entry.total_ms,
+                "slow file during code indexing"
+            );
         }
 
         observer.record_source_bytes(result.stats.bytes_discovered);
