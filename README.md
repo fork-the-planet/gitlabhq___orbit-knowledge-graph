@@ -27,7 +27,8 @@ Index your GitLab SDLC and source code as one property graph, then query it from
 
 Orbit Local runs on your machine. The `orbit` CLI parses a local repository, extracts definitions and cross-file references, and writes a code-only call graph to a single DuckDB file. No GitLab account is required at query time. The install step downloads a release artifact over HTTPS.
 
-What it indexes: directories, files, function and class definitions, and cross-file import references. Same 11+ languages as Orbit Remote. Multiple repositories share one database at `~/.orbit/graph.duckdb`, each scoped by repository and branch.
+What it indexes: directories, files, function and class definitions, and cross-file import references. It indexes the same 11+ languages as Orbit Remote. Multiple repositories share one database at `~/.orbit/graph.duckdb`, each scoped by repository and branch.
+
 
 | Access method | Use for |
 |---|---|
