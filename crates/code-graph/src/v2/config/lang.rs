@@ -240,6 +240,13 @@ define_languages! {
         separator: ".",
         names: ["swift"],
     },
+    Lua => {
+        support_lang: Lua,
+        extensions: ["lua"],
+        exclude: [],
+        separator: ".",
+        names: ["lua"],
+    },
 }
 
 #[cfg(test)]

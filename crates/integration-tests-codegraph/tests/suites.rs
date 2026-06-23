@@ -291,6 +291,11 @@ yaml_test!(swift_definitions, "swift/definitions.yaml");
 yaml_test!(swift_imports, "swift/imports.yaml");
 yaml_test!(swift_cross_file_calls, "swift/cross_file_calls.yaml");
 
+// Lua
+yaml_test!(lua_definitions, "lua/definitions.yaml");
+yaml_test!(lua_requires, "lua/requires.yaml");
+yaml_test!(lua_cross_file_calls, "lua/cross_file_calls.yaml");
+
 // PHP
 yaml_test!(php_resolution, "php/resolution.yaml");
 yaml_test!(php_hardcore, "php/hardcore.yaml");
