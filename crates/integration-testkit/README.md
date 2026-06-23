@@ -230,7 +230,7 @@ async fn traversal_edges(ctx: &TestContext) {
     let resp = run_query(ctx, r#"{
         "query_type": "traversal",
         "nodes": [
-            {"id": "u", "entity": "User"},
+            {"id": "u", "entity": "User", "node_ids": [1]},
             {"id": "g", "entity": "Group"}
         ],
         "relationships": [{"type": "MEMBER_OF", "from": "u", "to": "g"}],
