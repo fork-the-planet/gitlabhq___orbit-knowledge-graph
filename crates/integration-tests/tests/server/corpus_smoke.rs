@@ -17,9 +17,13 @@
 //! entries are deliberate invalid controls and must fail.
 
 use std::collections::{BTreeMap, HashMap};
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use crate::common::{DummyClaims, GRAPH_SCHEMA_SQL, SIPHON_SCHEMA_SQL, TestContext, load_ontology};
+use compiler::parse_input;
+use comrak::nodes::{NodeCodeBlock, NodeValue};
+use comrak::{Arena, Options, parse_document};
 use gkg_server::auth::Claims;
 use gkg_server::pipeline::{
     ClickHouseExecutor, HydrationStage, PathResolutionStage, RedactionStage, SecurityStage,
@@ -27,6 +31,7 @@ use gkg_server::pipeline::{
 use gkg_server::redaction::ResourceAuthorization;
 use integration_testkit::load_seed;
 use ontology::Ontology;
+use query_engine::formatters::GraphResponse;
 use query_engine::pipeline::{
     NoOpObserver, PipelineError, PipelineObserver, PipelineRunner, PipelineStage,
     QueryPipelineContext, TypeMap,
@@ -38,12 +43,26 @@ use query_engine::shared::{
 use serde::Deserialize;
 
 const CORPUS_DIR: &str = concat!(env!("FIXTURES_DIR"), "/queries/corpus");
+const REPO_ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../..");
+const DOC_MARKDOWN_DIRS: &[&str] = &[
+    "docs/source",
+    "docs/design-documents",
+    "skills/orbit",
+    "crates/integration-testkit",
+];
+const DOC_QUERY_MARKER: &str = "orbit-query";
 
 #[derive(Deserialize)]
 struct Entry {
     query: String,
     #[serde(default)]
     expect: Option<String>,
+}
+
+struct SmokeCase {
+    key: String,
+    query: String,
+    expects_error: bool,
 }
 
 /// Stand-in for the real `AuthorizationStage`, which authorizes resources via
@@ -145,7 +164,7 @@ fn resolve_sample_node_ids(node: &mut serde_json::Value) {
     obj.insert("node_ids".to_string(), serde_json::json!(ids));
 }
 
-fn load_corpus() -> Vec<(String, Entry)> {
+fn load_corpus() -> Vec<SmokeCase> {
     let mut out = Vec::new();
     let mut files: Vec<_> = std::fs::read_dir(CORPUS_DIR)
         .unwrap_or_else(|e| panic!("read corpus dir {CORPUS_DIR}: {e}"))
@@ -168,10 +187,196 @@ fn load_corpus() -> Vec<(String, Entry)> {
         let entries: BTreeMap<String, Entry> =
             serde_yaml::from_str(&text).unwrap_or_else(|e| panic!("parse {file}: {e}"));
         for (key, entry) in entries {
-            out.push((format!("{file}::{key}"), entry));
+            let expects_error = entry.expect.as_deref() == Some("error");
+            out.push(SmokeCase {
+                key: format!("{file}::{key}"),
+                query: entry.query,
+                expects_error,
+            });
         }
     }
     out
+}
+
+fn load_doc_queries() -> (Vec<SmokeCase>, Vec<String>) {
+    let mut cases = Vec::new();
+    let mut failures = Vec::new();
+
+    for path in markdown_paths() {
+        let text = std::fs::read_to_string(&path)
+            .unwrap_or_else(|e| panic!("read Markdown file {}: {e}", path.display()));
+        collect_doc_queries(&path, &text, &mut cases, &mut failures);
+    }
+
+    cases.sort_by(|a, b| a.key.cmp(&b.key));
+    (cases, failures)
+}
+
+fn markdown_paths() -> Vec<PathBuf> {
+    let root = Path::new(REPO_ROOT);
+    let mut paths = Vec::new();
+
+    for rel in DOC_MARKDOWN_DIRS {
+        collect_markdown_paths(&root.join(rel), &mut paths);
+    }
+
+    let root_entries = std::fs::read_dir(root)
+        .unwrap_or_else(|e| panic!("read repository root {}: {e}", root.display()));
+    for entry in root_entries {
+        let path = entry.expect("read repository root entry").path();
+        if path.extension().is_some_and(|ext| ext == "md") {
+            paths.push(path);
+        }
+    }
+
+    paths.sort();
+    paths
+}
+
+fn collect_markdown_paths(dir: &Path, paths: &mut Vec<PathBuf>) {
+    let entries =
+        std::fs::read_dir(dir).unwrap_or_else(|e| panic!("read docs dir {}: {e}", dir.display()));
+
+    for entry in entries {
+        let path = entry.expect("read docs dir entry").path();
+        if path.is_dir() {
+            collect_markdown_paths(&path, paths);
+        } else if path.extension().is_some_and(|ext| ext == "md") {
+            paths.push(path);
+        }
+    }
+}
+
+fn collect_doc_queries(
+    path: &Path,
+    text: &str,
+    cases: &mut Vec<SmokeCase>,
+    failures: &mut Vec<String>,
+) {
+    let arena = Arena::new();
+    let root = parse_document(&arena, text, &Options::default());
+    let path_label = relative_path(path);
+
+    for node in root.descendants() {
+        let ast = node.data();
+        if let NodeValue::CodeBlock(block) = &ast.value {
+            handle_doc_code_block(
+                &path_label,
+                ast.sourcepos.start.line,
+                block,
+                cases,
+                failures,
+            );
+        }
+    }
+}
+
+fn handle_doc_code_block(
+    path_label: &str,
+    line: usize,
+    block: &NodeCodeBlock,
+    cases: &mut Vec<SmokeCase>,
+    failures: &mut Vec<String>,
+) {
+    if !block.fenced {
+        return;
+    }
+
+    let tokens: Vec<_> = block
+        .info
+        .split_whitespace()
+        .map(|token| token.to_ascii_lowercase())
+        .collect();
+    let first_token = tokens.first().map(String::as_str);
+    let marked = tokens.iter().any(|token| token == DOC_QUERY_MARKER);
+
+    if !block.closed && (marked || matches!(first_token, Some("json" | "bash" | "sh" | "shell"))) {
+        failures.push(format!("{path_label}:{line}: unclosed Markdown code fence"));
+        return;
+    }
+
+    if marked {
+        match normalize_marked_doc_query(first_token, &block.literal) {
+            Ok(query) => {
+                cases.push(SmokeCase {
+                    key: format!("{path_label}:{line}"),
+                    query,
+                    expects_error: false,
+                });
+            }
+            Err(e) => failures.push(format!("{path_label}:{line}: {e}")),
+        }
+        return;
+    }
+
+    match first_token {
+        Some("json") => {
+            if let Ok(value) = serde_json::from_str::<serde_json::Value>(&block.literal)
+                && orbit_query_value(&value).is_some()
+            {
+                failures.push(format!(
+                    "{path_label}:{line}: Orbit query JSON fence must use `json {DOC_QUERY_MARKER}`"
+                ));
+            }
+        }
+        Some("bash" | "sh" | "shell") if block.literal.contains("\"query_type\"") => {
+            failures.push(format!(
+                "{path_label}:{line}: shell fence contains Orbit query JSON; move the query body to a `json {DOC_QUERY_MARKER}` fence"
+            ));
+        }
+        _ => {}
+    }
+}
+
+fn normalize_marked_doc_query(first_token: Option<&str>, body: &str) -> Result<String, String> {
+    match first_token {
+        Some("json") => normalize_doc_query(body),
+        _ => Err(format!(
+            "`{DOC_QUERY_MARKER}` fences must use `json` as the first info token"
+        )),
+    }
+}
+
+fn normalize_doc_query(body: &str) -> Result<String, String> {
+    let value: serde_json::Value =
+        serde_json::from_str(body).map_err(|e| format!("invalid Orbit query JSON: {e}"))?;
+    let query = orbit_query_value(&value)
+        .ok_or_else(|| "marked fence does not contain an Orbit query".to_string())?;
+    let json =
+        serde_json::to_string(query).map_err(|e| format!("serialize Orbit query JSON: {e}"))?;
+    parse_input(&json).map_err(|e| format!("invalid Orbit query JSON: {e}"))?;
+    Ok(json)
+}
+
+fn orbit_query_value(value: &serde_json::Value) -> Option<&serde_json::Value> {
+    let query = value.get("query").unwrap_or(value);
+    if is_query_output(query) {
+        return None;
+    }
+
+    query
+        .as_object()
+        .is_some_and(|obj| obj.contains_key("query_type"))
+        .then_some(query)
+}
+
+fn is_query_output(value: &serde_json::Value) -> bool {
+    if serde_json::from_value::<GraphResponse>(value.clone()).is_ok() {
+        return true;
+    }
+
+    value.as_object().is_some_and(|obj| {
+        obj.contains_key("result")
+            || obj.contains_key("format_version")
+            || obj.contains_key("format_name")
+    })
+}
+
+fn relative_path(path: &Path) -> String {
+    path.strip_prefix(Path::new(REPO_ROOT))
+        .unwrap_or(path)
+        .display()
+        .to_string()
 }
 
 /// Run one query through the production pipeline stage sequence (authz mocked).
@@ -234,17 +439,19 @@ async fn corpus_smoke() {
     let claims = Claims::dummy();
 
     let corpus = load_corpus();
-    let total = corpus.len();
-    let mut failures: Vec<String> = Vec::new();
+    let corpus_total = corpus.len();
+    let (doc_queries, mut failures) = load_doc_queries();
+    let doc_total = doc_queries.len();
+    let total = corpus_total + doc_total;
+    let mut smoke_cases = corpus;
+    smoke_cases.extend(doc_queries);
 
-    for (key, entry) in corpus {
-        let expects_error = entry.expect.as_deref() == Some("error");
-
-        let json = match resolve_placeholders(&entry.query) {
+    for case in smoke_cases {
+        let json = match resolve_placeholders(&case.query) {
             Ok(j) => j,
             Err(e) => {
-                if !expects_error {
-                    failures.push(format!("{key}: invalid query JSON: {e}"));
+                if !case.expects_error {
+                    failures.push(format!("{}: invalid query JSON: {e}", case.key));
                 }
                 continue;
             }
@@ -252,10 +459,11 @@ async fn corpus_smoke() {
 
         let outcome = run_pipeline(&ctx, &json, &ontology, &claims).await;
 
-        match (expects_error, outcome) {
-            (false, Err(e)) => failures.push(format!("{key}: {e:?}")),
+        match (case.expects_error, outcome) {
+            (false, Err(e)) => failures.push(format!("{}: {e:?}", case.key)),
             (true, Ok(())) => failures.push(format!(
-                "{key}: expected a pipeline error (expect: error), but it ran"
+                "{}: expected a pipeline error (expect: error), but it ran",
+                case.key
             )),
             _ => {}
         }
@@ -268,5 +476,7 @@ async fn corpus_smoke() {
         total,
         failures.join("\n  ")
     );
-    eprintln!("corpus_smoke: {total} queries ran clean through the full pipeline");
+    eprintln!(
+        "corpus_smoke: {corpus_total} corpus queries and {doc_total} docs queries ran clean through the full pipeline"
+    );
 }
