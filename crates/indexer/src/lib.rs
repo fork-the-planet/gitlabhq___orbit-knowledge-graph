@@ -2,23 +2,20 @@
 //!
 //! Message processing framework and domain modules for the GitLab Knowledge Graph.
 //!
-//! This crate contains both the engine (message routing, concurrency, destinations)
+//! This crate contains both the engine (message routing, concurrency)
 //! and the domain modules (SDLC, Code) that implement indexing logic.
 //!
 //! ## Engine
 //!
 //! You provide:
 //! - A [`NatsBroker`](nats::NatsBroker) for message streaming
-//! - A [`Destination`](engine::destination::Destination) (database, data lake, etc.)
+//! - A [`ClickHouseWriter`](clickhouse::ClickHouseWriter) for writing record batches
 //! - One or more [`Handler`](engine::handler::Handler)s registered in a [`HandlerRegistry`](engine::handler::HandlerRegistry)
 //!
 //! ```text
-//! NatsBroker ──▶ Engine ──▶ Destination
-//!                  │
-//!                  ▼
-//!            HandlerRegistry
-//!              └─ Handler
-//!              └─ Handler
+//! NatsBroker ──▶ Engine ──▶ HandlerRegistry
+//!                              └─ Handler (owns Destination)
+//!                              └─ Handler (owns Destination)
 //! ```
 //!
 //! ## Domain modules
@@ -47,7 +44,7 @@ pub mod testkit;
 
 // Re-export engine submodules at crate root for external API stability.
 pub use config::*;
-pub use engine::{dead_letter, destination, durability, handler, types, worker_pool};
+pub use engine::{dead_letter, durability, handler, types, worker_pool};
 
 /// Re-export metrics from their canonical locations for external API stability.
 pub mod metrics {
@@ -59,7 +56,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use clickhouse::ClickHouseConfigurationExt;
-use clickhouse::ClickHouseDestination;
+use clickhouse::ClickHouseWriter;
 use engine::EngineBuilder;
 use engine::handler::{HandlerInitError, HandlerRegistry};
 use gitlab_client::GitlabClient;
@@ -155,7 +152,7 @@ pub async fn run(
     let metrics = Arc::new(engine::metrics::EngineMetrics::new());
 
     info!(url = %config.graph.url, "connecting to graph ClickHouse");
-    let destination = Arc::new(ClickHouseDestination::new(
+    let writer = Arc::new(ClickHouseWriter::new(
         config.graph.clone(),
         metrics.clone(),
     )?);
@@ -172,14 +169,28 @@ pub async fn run(
 
     if config.engine.is_module_enabled(IndexerModule::Sdlc) {
         info!("initializing SDLC handlers");
-        modules::sdlc::register_handlers(&registry, config, &ontology, analytics.clone()).await?;
+        modules::sdlc::register_handlers(
+            &registry,
+            config,
+            &ontology,
+            writer.clone(),
+            analytics.clone(),
+        )
+        .await?;
     } else {
         info!("SDLC handlers disabled by engine.modules");
     }
 
     if config.engine.is_module_enabled(IndexerModule::Code) {
         info!("initializing Code handlers");
-        modules::code::register_handlers(&registry, config, &ontology, analytics.clone()).await?;
+        modules::code::register_handlers(
+            &registry,
+            config,
+            &ontology,
+            writer.clone(),
+            analytics.clone(),
+        )
+        .await?;
     } else {
         info!("Code handlers disabled by engine.modules");
     }
@@ -200,7 +211,7 @@ pub async fn run(
     );
 
     let engine = Arc::new(
-        EngineBuilder::new(broker, registry, destination, indexing_status)
+        EngineBuilder::new(broker, registry, indexing_status)
             .metrics(metrics)
             .build(),
     );

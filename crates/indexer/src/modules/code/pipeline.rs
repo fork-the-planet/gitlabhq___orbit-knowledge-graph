@@ -14,7 +14,7 @@ use super::metrics::{CodeMetrics, RecordStageError};
 use super::repository::cache::CachedRepository;
 use super::repository::{RepositoryResolver, ResolveError};
 use super::stale_data_cleaner::StaleDataCleaner;
-use super::writer::{StreamWriter, WriteTotals};
+use crate::clickhouse::WriteReport;
 use crate::handler::{HandlerContext, HandlerError};
 use crate::observer::IndexingObserver;
 
@@ -48,6 +48,7 @@ pub fn indexing_slot_count(concurrency_limit: usize) -> usize {
 
 pub struct CodeIndexingPipeline {
     resolver: RepositoryResolver,
+    writer: Arc<crate::clickhouse::ClickHouseWriter>,
     checkpoint_store: Arc<dyn CodeCheckpointStore>,
     stale_data_cleaner: Arc<dyn StaleDataCleaner>,
     metrics: CodeMetrics,
@@ -67,6 +68,7 @@ impl CodeIndexingPipeline {
     )]
     pub fn new(
         resolver: RepositoryResolver,
+        writer: Arc<crate::clickhouse::ClickHouseWriter>,
         checkpoint_store: Arc<dyn CodeCheckpointStore>,
         stale_data_cleaner: Arc<dyn StaleDataCleaner>,
         metrics: CodeMetrics,
@@ -81,6 +83,7 @@ impl CodeIndexingPipeline {
         let indexing_slots = sem(ic);
         Self {
             resolver,
+            writer,
             checkpoint_store,
             stale_data_cleaner,
             metrics,
@@ -264,7 +267,7 @@ impl CodeIndexingPipeline {
         let indexing_start = Instant::now();
         let config = self.build_pipeline_config(context, cancel);
         let (result, per_table_writes) = self
-            .build_code_graph(context, request, repository, indexed_at, config)
+            .build_code_graph(request, repository, indexed_at, config)
             .await?;
 
         context.progress.notify_in_progress().await;
@@ -334,12 +337,11 @@ impl CodeIndexingPipeline {
 
     async fn build_code_graph(
         &self,
-        context: &HandlerContext,
         request: &IndexingRequest,
         repository: &CachedRepository,
         indexed_at: DateTime<Utc>,
         config: PipelineConfig,
-    ) -> Result<(code_graph::v2::PipelineResult, Vec<WriteTotals>), HandlerError> {
+    ) -> Result<(code_graph::v2::PipelineResult, Vec<WriteReport>), HandlerError> {
         let tracer = code_graph::v2::trace::Tracer::new(false);
         let envelope = IndexerEnvelope::new(
             request.traversal_path.clone(),
@@ -354,13 +356,15 @@ impl CodeIndexingPipeline {
             &self.ontology,
             self.table_names.clone(),
         ));
-        let (writer, stream_handle) = StreamWriter::new(
-            context.destination.clone(),
-            self.pipeline_config.write_channel_capacity,
-            self.pipeline_config.write_max_concurrent_writes,
-            self.pipeline_config.write_slice_rows,
-        );
-        let sink: Arc<dyn code_graph::v2::BatchSink> = Arc::new(writer);
+        let (tx, rx) =
+            tokio::sync::mpsc::channel(self.pipeline_config.write_channel_capacity.max(1));
+        let sink: Arc<dyn code_graph::v2::BatchSink> =
+            Arc::new(ChannelSink::new(tx, self.pipeline_config.write_slice_rows));
+        let w = Arc::clone(&self.writer);
+        let max_rows = self.pipeline_config.write_slice_rows;
+        let max_concurrent = self.pipeline_config.write_max_concurrent_writes;
+        let drain =
+            tokio::spawn(async move { w.write_batches_stream(rx, max_rows, max_concurrent).await });
 
         let code_graph_start = Instant::now();
         let repo_dir = repository.path.clone();
@@ -386,18 +390,16 @@ impl CodeIndexingPipeline {
         );
 
         let flush_start = Instant::now();
-        let per_table_writes = match stream_handle.finish().await {
-            Ok(totals) => totals,
-            Err(e) => {
-                return Err(HandlerError::Permanent {
-                    message: format!(
-                        "fatal code indexing pipeline error during flush for project {}: {e}",
-                        request.project_id
-                    ),
-                    action: crate::handler::PermanentAction::DeadLetter,
-                });
-            }
-        };
+        let per_table_writes = drain
+            .await
+            .map_err(|e| HandlerError::Processing(format!("drain task panicked: {e}")))?
+            .map_err(|e| HandlerError::Permanent {
+                message: format!(
+                    "fatal code indexing pipeline error during flush for project {}: {e}",
+                    request.project_id
+                ),
+                action: crate::handler::PermanentAction::DeadLetter,
+            })?;
         let graph_write_duration = flush_start.elapsed();
         info!(
             duration_ms = graph_write_duration.as_millis() as u64,
@@ -410,7 +412,7 @@ impl CodeIndexingPipeline {
     fn record_indexing_results(
         &self,
         result: &code_graph::v2::PipelineResult,
-        per_table_writes: &[WriteTotals],
+        per_table_writes: &[WriteReport],
         observer: &mut dyn IndexingObserver,
         request: &IndexingRequest,
         indexing_start: Instant,
@@ -561,5 +563,45 @@ async fn acquire(
             .map(Some)
             .map_err(|e| HandlerError::Processing(format!("{name} slot closed: {e}"))),
         None => Ok(None),
+    }
+}
+
+/// `BatchSink` adapter: slices oversized batches and sends to an mpsc channel.
+struct ChannelSink {
+    tx: tokio::sync::mpsc::Sender<(String, arrow::record_batch::RecordBatch)>,
+    max_rows_per_send: usize,
+}
+
+impl ChannelSink {
+    fn new(
+        tx: tokio::sync::mpsc::Sender<(String, arrow::record_batch::RecordBatch)>,
+        max_rows_per_send: usize,
+    ) -> Self {
+        Self {
+            tx,
+            max_rows_per_send: max_rows_per_send.max(1),
+        }
+    }
+}
+
+impl code_graph::v2::BatchSink for ChannelSink {
+    fn write_batch(
+        &self,
+        table: &str,
+        batch: &arrow::record_batch::RecordBatch,
+    ) -> Result<(), code_graph::v2::SinkError> {
+        if batch.num_rows() == 0 {
+            return Ok(());
+        }
+        let table = table.to_string();
+        let mut offset = 0;
+        while offset < batch.num_rows() {
+            let len = (batch.num_rows() - offset).min(self.max_rows_per_send);
+            self.tx
+                .blocking_send((table.clone(), batch.slice(offset, len)))
+                .map_err(|_| code_graph::v2::SinkError("channel closed".into()))?;
+            offset += len;
+        }
+        Ok(())
     }
 }

@@ -9,6 +9,7 @@ use uuid::Uuid;
 
 use crate::analytics::IndexingAnalytics;
 use crate::checkpoint::{Checkpoint, CheckpointStore, namespace_position_key};
+
 use crate::durability::RunDurability;
 use crate::handler::{Handler, HandlerContext, HandlerError};
 use crate::modules::sdlc::datalake::DatalakeQuery;
@@ -34,6 +35,7 @@ pub struct EntityHandler {
     plan: Plan,
     scope: EtlScope,
     pipeline: Arc<Pipeline>,
+    writer: Arc<crate::clickhouse::ClickHouseWriter>,
     datalake: Arc<dyn DatalakeQuery>,
     checkpoint_store: Arc<dyn CheckpointStore>,
     metrics: SdlcMetrics,
@@ -60,6 +62,7 @@ impl EntityHandler {
         plan: Plan,
         scope: EtlScope,
         pipeline: Arc<Pipeline>,
+        writer: Arc<crate::clickhouse::ClickHouseWriter>,
         datalake: Arc<dyn DatalakeQuery>,
         checkpoint_store: Arc<dyn CheckpointStore>,
         metrics: SdlcMetrics,
@@ -73,6 +76,7 @@ impl EntityHandler {
             plan,
             scope,
             pipeline,
+            writer,
             datalake,
             checkpoint_store,
             metrics,
@@ -153,7 +157,7 @@ impl EntityHandler {
 
         let observer: Arc<Mutex<dyn IndexingObserver>> = Arc::new(Mutex::new(observer));
         let pipeline_context = PipelineContext {
-            destination: Arc::clone(&context.destination),
+            writer: Arc::clone(&self.writer),
             progress: context.progress.clone(),
             observer: Arc::clone(&observer),
         };
@@ -307,7 +311,7 @@ impl EntityHandler {
             let plan = self.plan.clone();
             let pipeline = Arc::clone(&self.pipeline);
             let partition_context = PipelineContext {
-                destination: Arc::clone(&context.destination),
+                writer: Arc::clone(&self.writer),
                 progress: context.progress.clone(),
                 observer: Arc::clone(&parent_pipeline_context.observer),
             };
@@ -484,15 +488,13 @@ mod tests {
     use crate::modules::sdlc::plan::build_plans;
     use crate::modules::sdlc::test_helpers::{EmptyDatalake, MockCheckpointStore, test_metrics};
     use crate::nats::ProgressNotifier;
-    use crate::testkit::{MockDestination, MockLockService, MockNatsServices, TestEnvelopeFactory};
+    use crate::testkit::{MockLockService, MockNatsServices, TestEnvelopeFactory};
     use crate::types::Event;
     use ontology::Ontology;
 
     fn handler_context() -> HandlerContext {
-        let destination = Arc::new(MockDestination::new());
         let mock_nats = Arc::new(MockNatsServices::new());
         HandlerContext::new(
-            destination,
             mock_nats.clone(),
             Arc::new(MockLockService::new()),
             ProgressNotifier::noop(),
@@ -525,10 +527,12 @@ mod tests {
             EtlScope::Namespaced => NamespaceIndexingRequest::subscription(),
         };
 
+        let writer = crate::testkit::test_writer();
         EntityHandler::new(
             plan,
             scope,
             pipeline,
+            writer,
             datalake,
             checkpoint_store,
             test_metrics(),

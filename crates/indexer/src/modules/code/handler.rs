@@ -13,6 +13,7 @@ use super::observer::CodeOtelObserver;
 use super::pipeline::{CodeIndexingPipeline, IndexOutcome, IndexingRequest};
 use super::repository::{EmptyRepositoryReason, RepositoryService, RepositoryServiceError};
 use crate::analytics::IndexingAnalytics;
+
 use crate::handler::{Handler, HandlerContext, HandlerError};
 use crate::locking::LockGuard;
 use crate::observer::{self, IndexingMode, IndexingObserver, PipelineType};
@@ -357,7 +358,7 @@ mod tests {
     use crate::modules::code::repository::service::test_utils::MockRepositoryService;
     use crate::modules::code::stale_data_cleaner::test_utils::MockStaleDataCleaner;
     use crate::nats::ProgressNotifier;
-    use crate::testkit::{MockDestination, MockLockService, MockNatsServices};
+    use crate::testkit::{MockLockService, MockNatsServices};
     use crate::types::Event;
     use chrono::Utc;
 
@@ -402,8 +403,10 @@ mod tests {
                 ));
             let resolver = RepositoryResolver::new(Arc::clone(&repo_service), cache);
 
+            let writer = crate::testkit::test_writer();
             let pipeline = Arc::new(CodeIndexingPipeline::new(
                 resolver,
+                writer,
                 Arc::clone(&checkpoint_store),
                 stale_data_cleaner,
                 metrics.clone(),
@@ -435,7 +438,6 @@ mod tests {
 
         fn handler_context(&self) -> HandlerContext {
             HandlerContext::new(
-                Arc::new(MockDestination::new()),
                 self.mock_nats.clone(),
                 self.mock_locks.clone(),
                 ProgressNotifier::noop(),
