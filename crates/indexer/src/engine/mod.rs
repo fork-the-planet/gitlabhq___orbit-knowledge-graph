@@ -16,7 +16,7 @@
 //! let registry = Arc::new(HandlerRegistry::default());
 //! registry.register_handler(Box::new(my_handler));
 //!
-//! let engine = EngineBuilder::new(broker, registry, Arc::new(my_destination))
+//! let engine = EngineBuilder::new(broker, registry)
 //!     .nats_services(nats_services)
 //!     .build();
 //!
@@ -27,7 +27,6 @@
 //! ```
 
 pub mod dead_letter;
-pub mod destination;
 pub mod durability;
 pub mod handler;
 pub mod metrics;
@@ -46,7 +45,7 @@ use tracing::{Instrument, error, info, warn};
 use crate::indexing_status::IndexingStatusStore;
 use crate::locking::{LockService, NatsLockService};
 use crate::nats::{DlqResult, NatsBroker, NatsError, NatsMessage, NatsServices, NatsServicesImpl};
-use destination::Destination;
+
 use gkg_server_config::EngineConfiguration;
 use handler::{Handler, HandlerContext, HandlerError, HandlerRegistry, PermanentAction};
 use metrics::EngineMetrics;
@@ -80,12 +79,11 @@ pub enum EngineError {
 /// use etl_engine::engine::EngineBuilder;
 /// use std::sync::Arc;
 ///
-/// let engine = EngineBuilder::new(broker, registry, destination).build();
+/// let engine = EngineBuilder::new(broker, registry).build();
 /// ```
 pub struct EngineBuilder {
     broker: Arc<NatsBroker>,
     registry: Arc<HandlerRegistry>,
-    destination: Arc<dyn Destination>,
     indexing_status: Arc<IndexingStatusStore>,
     metrics: Option<Arc<EngineMetrics>>,
     nats_services: Option<Arc<dyn NatsServices>>,
@@ -95,13 +93,11 @@ impl EngineBuilder {
     pub fn new(
         broker: Arc<NatsBroker>,
         registry: Arc<HandlerRegistry>,
-        destination: Arc<dyn Destination>,
         indexing_status: Arc<IndexingStatusStore>,
     ) -> Self {
         Self {
             broker,
             registry,
-            destination,
             indexing_status,
             metrics: None,
             nats_services: None,
@@ -133,7 +129,6 @@ impl EngineBuilder {
         Engine {
             broker: self.broker,
             registry: self.registry,
-            destination: self.destination,
             metrics,
             nats_services,
             lock_service,
@@ -154,7 +149,7 @@ impl EngineBuilder {
 /// Use [`EngineBuilder`]:
 ///
 /// ```ignore
-/// let engine = EngineBuilder::new(broker, registry, destination).build();
+/// let engine = EngineBuilder::new(broker, registry).build();
 /// ```
 ///
 /// # Lifecycle
@@ -165,7 +160,6 @@ impl EngineBuilder {
 pub struct Engine {
     broker: Arc<NatsBroker>,
     registry: Arc<HandlerRegistry>,
-    destination: Arc<dyn Destination>,
     metrics: Arc<EngineMetrics>,
     nats_services: Arc<dyn NatsServices>,
     lock_service: Arc<dyn LockService>,
@@ -236,7 +230,7 @@ impl Engine {
                     inflight.spawn(process_message(
                         message,
                         self.registry.handlers_for(&subscription),
-                        HandlerContext::new(self.destination.clone(), self.nats_services.clone(), self.lock_service.clone(), progress, self.indexing_status.clone()),
+                        HandlerContext::new(self.nats_services.clone(), self.lock_service.clone(), progress, self.indexing_status.clone()),
                         self.broker.clone(),
                         runtime.clone(),
                         subscription.clone(),
@@ -541,7 +535,7 @@ mod tests {
     use super::*;
     use crate::nats::ProgressNotifier;
     use crate::testkit::mocks::{
-        MockDestination, MockHandler, MockLockService, MockNatsServices, TestEnvelopeFactory,
+        MockHandler, MockLockService, MockNatsServices, TestEnvelopeFactory,
     };
     use gkg_server_config::SubscriptionConfig;
     use handler::{HandlerError, PermanentAction};
@@ -550,7 +544,6 @@ mod tests {
     fn test_context() -> HandlerContext {
         let mock = Arc::new(MockNatsServices::new());
         HandlerContext::new(
-            Arc::new(MockDestination::new()),
             mock.clone(),
             Arc::new(MockLockService::new()),
             ProgressNotifier::noop(),
