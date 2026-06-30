@@ -106,6 +106,18 @@ pub struct Expect {
     pub edges: Vec<EdgeExpect>,
     #[serde(default)]
     pub totals: BTreeMap<String, usize>,
+    #[serde(default)]
+    pub dispatched: Vec<DispatchExpect>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DispatchExpect {
+    pub kind: String,
+    #[serde(default)]
+    pub count: Option<usize>,
+    #[serde(default)]
+    pub rows: Vec<RowMatcher>,
 }
 
 #[derive(Debug, Deserialize)]
