@@ -25,6 +25,8 @@ pub struct Scenario {
     #[serde(default)]
     pub cdc: Vec<CdcEvent>,
     #[serde(default)]
+    pub targets: Vec<String>,
+    #[serde(default)]
     pub expect: Option<Expect>,
     #[serde(default)]
     pub steps: Vec<Step>,
@@ -39,6 +41,7 @@ impl Scenario {
             || self.run.is_some()
             || self.dispatch.is_some()
             || !self.cdc.is_empty()
+            || !self.targets.is_empty()
             || self.expect.is_some();
         match (has_inline, self.steps.is_empty()) {
             (true, true) => vec![Step {
@@ -47,6 +50,7 @@ impl Scenario {
                 run: self.run,
                 dispatch: self.dispatch,
                 cdc: self.cdc,
+                targets: self.targets,
                 expect: self.expect,
             }],
             (false, false) => self.steps,
@@ -88,6 +92,9 @@ pub struct Step {
     pub dispatch: Option<DispatchSpec>,
     #[serde(default)]
     pub cdc: Vec<CdcEvent>,
+    /// Entity types the namespace handler indexes (empty means all).
+    #[serde(default)]
+    pub targets: Vec<String>,
     #[serde(default)]
     pub expect: Option<Expect>,
 }
@@ -118,6 +125,8 @@ pub enum DispatchSpec {
     Many(Vec<DispatchKind>),
 }
 
+/// A dispatcher scheduled task. Drains the requests it publishes for
+/// `expect.dispatched`.
 #[derive(Debug, Clone, Copy, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum DispatchKind {
