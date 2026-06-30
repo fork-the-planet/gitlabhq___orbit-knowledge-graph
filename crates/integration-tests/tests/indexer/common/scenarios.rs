@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use integration_testkit::TestContext;
-use integration_testkit::scenario::{ScenarioHandlers, Scope};
+use integration_testkit::scenario::{DispatchedMessage, ScenarioHandlers, Scope};
 
 use super::handlers::{
     global_envelope, global_handler, handler_context, namespace_envelope, namespace_handler,
@@ -11,7 +11,12 @@ pub struct SdlcScenarioHandlers;
 
 #[async_trait]
 impl ScenarioHandlers for SdlcScenarioHandlers {
-    async fn run(&self, ctx: &TestContext, handler: &str, scope: Option<Scope>) {
+    async fn run(
+        &self,
+        ctx: &TestContext,
+        handler: &str,
+        scope: Option<Scope>,
+    ) -> Vec<DispatchedMessage> {
         match handler {
             "namespace" => {
                 let scope = require_scope(handler, scope);
@@ -44,6 +49,7 @@ impl ScenarioHandlers for SdlcScenarioHandlers {
             }
             other => panic!("unknown scenario handler '{other}'"),
         }
+        Vec::new()
     }
 }
 

@@ -76,7 +76,7 @@
     },
     "handler": {
       "type": "string",
-      "enum": ["namespace", "global", "system_notes"]
+      "enum": ["namespace", "global", "system_notes", "dispatch_namespace"]
     },
     "step": {
       "type": "object",
@@ -105,6 +105,28 @@
           "type": "object",
           "description": "Exact total row count per table ('and nothing else' assertions).",
           "additionalProperties": { "type": "integer", "minimum": 0 }
+        },
+        "dispatched": {
+          "type": "array",
+          "description": "Assertions on the indexing requests a dispatch handler published to NATS.",
+          "items": { "$ref": "#/definitions/dispatchExpect" }
+        }
+      }
+    },
+    "dispatchExpect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "Logical request type a dispatch handler tags its drained messages with, e.g. namespace."
+        },
+        "count": { "type": "integer", "minimum": 0 },
+        "rows": {
+          "type": "array",
+          "description": "Each matcher must match exactly one published request payload; 'contains' matches array membership or a string substring.",
+          "items": { "$ref": "#/definitions/rowMatcher" }
         }
       }
     },

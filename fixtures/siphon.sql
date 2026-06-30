@@ -534,7 +534,7 @@ SETTINGS index_granularity = 2048, deduplicate_merge_projection_mode = 'rebuild'
 
 -- Knowledge graph enabled namespaces.
 -- `traversal_path` mirrors the production column added in
-CREATE TABLE IF NOT EXISTS test.siphon_knowledge_graph_enabled_namespaces
+CREATE TABLE IF NOT EXISTS siphon_knowledge_graph_enabled_namespaces
 (
     `id` Int64 CODEC(DoubleDelta, ZSTD(1)),
     `root_namespace_id` Int64,
