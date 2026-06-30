@@ -18,7 +18,7 @@ use indexer::topic::{
 };
 use integration_testkit::TestContext;
 use integration_testkit::scenario::{
-    CdcEvent, CdcOperation, DispatchedMessage, ScenarioHandlers, Scope,
+    CdcEvent, CdcOperation, DispatchedMessage, HandlerInput, ScenarioHandlers,
 };
 use siphon_proto::replication_event::{Column, Operation};
 use siphon_proto::{LogicalReplicationEvents, ReplicationEvent, Value, value};
@@ -50,8 +50,7 @@ impl ScenarioHandlers for DispatchScenarioHandlers {
         &self,
         ctx: &TestContext,
         handler: &str,
-        _scope: Option<Scope>,
-        cdc: &[CdcEvent],
+        input: HandlerInput<'_>,
     ) -> Vec<DispatchedMessage> {
         let _serial = self.serial.lock().await;
         recreate_stream(&self.nats_url).await;
@@ -59,7 +58,7 @@ impl ScenarioHandlers for DispatchScenarioHandlers {
             "dispatch_namespace" => run_namespace_dispatcher(ctx, &self.nats_url).await,
             "dispatch_global" => run_global_dispatcher(&self.nats_url).await,
             "dispatch_enabled_namespace_cdc" => {
-                dispatch_enabled_namespace_cdc(ctx, &self.nats_url, cdc).await
+                dispatch_enabled_namespace_cdc(ctx, &self.nats_url, input.cdc).await
             }
             other => panic!("unknown dispatch scenario handler '{other}'"),
         }
