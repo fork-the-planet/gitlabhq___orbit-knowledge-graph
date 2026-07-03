@@ -1,3 +1,21 @@
+## [0.85.0](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.84.1...v0.85.0) (2026-07-03)
+
+### Features
+
+* **indexer:** sweep stale code rows once after the backfill drains ([82020e6](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/82020e641c3388ac45e0c9a9aed19c4abacbef0a)) by Michael Angelo Rivera
+* **ontology:** add PackageFile node and package-file edges ([3f904ec](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/3f904ec78007c5d01534c2ec644f3b532a9fd952)) by Tim Rizzi
+
+### Fixes
+
+* **indexer:** skip stale cleanup on first code index and async-insert tombstones ([5bc6b91](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/5bc6b910f69e514c2e0194f0a5a9a86c03fe29ed)) by Michael Angelo Rivera
+* **indexer:** support automatic schema rollback (re-activate or rebuild) ([72db035](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/72db0350586edfa2613db09f5e9e0c9f6a552dae)) by Jean-Gabriel Doyon
+
+### Other
+
+* **e2e:** bump siphon, gitlab, and gkg pins to current ([a7a2ec1](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/a7a2ec14b9c9c98cad8ffec5ae6ed6196627f905)) by michaelangeloio
+* **e2e:** revert gitlab pins to last-green build ([e2294aa](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/e2294aa0fec1d66f2fb2a54ec26c1ed6c6721090)) by Michael Usachenko
+* **schema:** bump schema version to 78 for a clean post-fix reindex ([e5f7e44](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/e5f7e447f20c8177b3336f1d26e8f3acbb01d58a)) by michaelangeloio
+
 ## [0.84.1](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.84.0...v0.84.1) (2026-07-02)
 
 ### Other
