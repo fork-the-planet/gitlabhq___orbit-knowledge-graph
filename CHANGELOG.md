@@ -1,3 +1,35 @@
+## [0.87.0](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.86.0...v0.87.0) (2026-07-09)
+
+### Features
+
+* **orbit-local:** add `orbit skill [path]` subcommand ([a378b8e](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/a378b8ee9d5541a97aef8bb4d8ee7c2a37bf8fd9)) by Dmitry Gruzd
+* **schema:** add migration ledger and retire schema-version-check ([058b698](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/058b6984458bcae567e9ed493bf92f0657552757)) by Jean-Gabriel Doyon
+* **server:** add named query discovery RPC ([147f373](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/147f373a6172be5aec6e714ae6bea86da58e880b)) by Aaron Algutifan
+* **skills:** add standalone orbit-local skill ([13ecc7b](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/13ecc7bd6d6b5306df395c9cf7b7cc20074ddb69)) by Dmitry Gruzd
+
+### Fixes
+
+* **code-graph:** resolve Python imports from outside the source root ([85179f8](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/85179f8e3edfefe622f8f9387b968fa13262f2c2)) by Michael Angelo Rivera
+* **compiler:** show full candidate lists in enum-rejection errors ([f65c4ac](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/f65c4ac9d610b945809bb879a6c9b8513c4d3a40)) by Aaron Algutifan
+* **indexer:** hex-encode bytea columns so binary bytes cannot poison the Arrow batch ([7e63339](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/7e633399f565c024e142423ca93105b95b105eac)) by Jean-Gabriel Doyon
+* **integration-tests:** resolve Iglu schemas offline in snowplow micro test ([b7745ba](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/b7745bad4023063b11baafa166a03e2514dc6035)) by Michael Angelo Rivera
+
+### Other
+
+* **adr:** add Orbit + Duo Agent Platform integration (ADR 006) ([ea4eae3](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/ea4eae385129c7f3902423544e9a604eccf91aba)) by Michael Angelo Rivera
+* **deps:** update rust crate bytes to v1.12.1 ([d5fb45c](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/d5fb45cf5ee3293ebf0acbb5bdcae6c39c159cf1)) by michaelangeloio
+* **deps:** update rust crate cargo-util-schemas to 0.14.0 ([2aaf30c](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/2aaf30c0e9fa7528f12646cd7772666c4852d6f2)) by GitLab Renovate Bot
+* **deps:** update rust crate ignore to v0.4.27 ([9b15686](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/9b156866795b7b5615d255299da2e9c29770aeb9)) by GitLab Renovate Bot
+* **i18n:** update ja-jp for commit 5f643e2f ([642d1cb](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/642d1cb86da0dee635db94ef6db7355cae9f3723)) by GitLab-Argo Bot
+* **i18n:** update ja-jp for commit b9c32e8a ([c733ee9](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/c733ee94868bd751f231755d51c2c431cc07b85a)) by GitLab-Argo Bot
+* **indexer:** derive branch is_default tag from the ontology ([e09a26a](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/e09a26a3d01baaa32352a685168b036924dffe6c)) by UJJWAL SINGH
+* **ontology:** remove orphan edge declarations DETECTED_IN, FROM_BRANCH, TARGETS ([799e578](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/799e5787d5b6fe950aaed84e1ef0b76ec1ba3b5d)) by Jean-Gabriel Doyon
+* **orbit:** add issue vs work-item entity pitfall ([0f79b01](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/0f79b0124677fe890b64f8d8d774c00aea910d24)) by Bohdan Parkhomchuk
+* **remote:** document group IP address restrictions for query results ([fc74177](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/fc74177e795cb1af72c982d197b3316eb9d1064f)) by michaelangeloio
+* **review:** adds puml drawings and review materials ([99f0ff3](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/99f0ff3d2c88fe91367d9505688920bb5728f273)) by Brian J Greene
+* **skills:** sharpen ast-grep and related-repositories triggering ([5e3fd63](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/5e3fd63a4c27e3bdbc9b759a77529dbfa7566ce9)) by Dmitry Gruzd
+* **templates:** align issue/MR templates with Orbit rebrand ([22f12b0](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/22f12b08d71d2f542034193c85e7934a245a0ab9)) by Michael Angelo Rivera
+
 ## [0.86.0](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.85.1...v0.86.0) (2026-07-07)
 
 ### Features
