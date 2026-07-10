@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use serde::{Deserialize, Serialize};
 
-use super::scope::{Scope, ScopeDeclaration, sdlc_entity_names};
+use super::scope::{LedgerScope, MigrationScope, sdlc_entity_names};
 use crate::Ontology;
 
 /// Ledger path relative to `CONFIG_DIR`.
@@ -23,6 +23,8 @@ const LEDGER_HEADER: &str = "\
 # with no entry is treated as \"*\", which also makes pruning old entries safe.
 ";
 
+const EMBEDDED_LEDGER: &str = include_str!(concat!(env!("CONFIG_DIR"), "/schema-migrations.yaml"));
+
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct MigrationLedger {
@@ -33,6 +35,39 @@ pub struct MigrationLedger {
 impl MigrationLedger {
     pub fn parse(content: &str) -> Result<Self, String> {
         serde_yaml::from_str(content).map_err(|e| format!("parsing migration ledger: {e}"))
+    }
+
+    pub fn load_embedded() -> Result<Self, String> {
+        Self::parse(EMBEDDED_LEDGER)
+    }
+
+    /// Union of ledger scopes between versions; gaps and rollbacks widen to [`MigrationScope::Full`].
+    #[must_use]
+    pub fn resolve_migration_scope_between(
+        &self,
+        active_version: u32,
+        target_version: u32,
+    ) -> MigrationScope {
+        if active_version >= target_version {
+            return MigrationScope::Full;
+        }
+
+        let mut scope: Option<MigrationScope> = None;
+        for version in (active_version + 1)..=target_version {
+            let entry = self
+                .migrations
+                .iter()
+                .find(|entry| entry.version == version);
+            let migration_scope = match entry {
+                Some(entry) => entry.migration_scope(),
+                None => return MigrationScope::Full,
+            };
+            scope = Some(match scope {
+                Some(accumulated) => accumulated.widened_with(&migration_scope),
+                None => migration_scope,
+            });
+        }
+        scope.unwrap_or(MigrationScope::Full)
     }
 
     /// Serialized YAML with the usage header.
@@ -65,7 +100,7 @@ impl MigrationLedger {
             }
             prev = Some(entry.version);
 
-            if !entry.entities.is_empty() && entry.scope != Scope::Sdlc {
+            if !entry.entities.is_empty() && entry.scope != LedgerScope::Sdlc {
                 return Err(format!(
                     "version {}: `entities:` is only valid with `scope: sdlc`",
                     entry.version
@@ -102,7 +137,7 @@ impl MigrationLedger {
 #[serde(deny_unknown_fields)]
 pub struct MigrationEntry {
     pub version: u32,
-    pub scope: Scope,
+    pub scope: LedgerScope,
     #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
     pub entities: BTreeSet<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -111,10 +146,11 @@ pub struct MigrationEntry {
 
 impl MigrationEntry {
     #[must_use]
-    pub fn declaration(&self) -> ScopeDeclaration {
-        ScopeDeclaration {
-            scope: self.scope,
-            entities: self.entities.clone(),
+    pub fn migration_scope(&self) -> MigrationScope {
+        match self.scope {
+            LedgerScope::All => MigrationScope::Full,
+            LedgerScope::Code => MigrationScope::Code,
+            LedgerScope::Sdlc => MigrationScope::Sdlc(self.entities.clone()),
         }
     }
 }
@@ -133,13 +169,13 @@ mod tests {
             migrations: vec![
                 MigrationEntry {
                     version: 5,
-                    scope: Scope::All,
+                    scope: LedgerScope::All,
                     entities: BTreeSet::new(),
                     note: None,
                 },
                 MigrationEntry {
                     version: 5,
-                    scope: Scope::All,
+                    scope: LedgerScope::All,
                     entities: BTreeSet::new(),
                     note: None,
                 },
@@ -156,13 +192,13 @@ mod tests {
             migrations: vec![
                 MigrationEntry {
                     version: 82,
-                    scope: Scope::Code,
+                    scope: LedgerScope::Code,
                     entities: BTreeSet::new(),
                     note: None,
                 },
                 MigrationEntry {
                     version: 81,
-                    scope: Scope::All,
+                    scope: LedgerScope::All,
                     entities: BTreeSet::new(),
                     note: None,
                 },
@@ -177,7 +213,7 @@ mod tests {
         let ledger = MigrationLedger {
             migrations: vec![MigrationEntry {
                 version: 5,
-                scope: Scope::All,
+                scope: LedgerScope::All,
                 entities: BTreeSet::new(),
                 note: None,
             }],
@@ -192,7 +228,7 @@ mod tests {
         let ledger = MigrationLedger {
             migrations: vec![MigrationEntry {
                 version: 1,
-                scope: Scope::Code,
+                scope: LedgerScope::Code,
                 entities: entities(&["Note"]),
                 note: None,
             }],
@@ -202,12 +238,88 @@ mod tests {
         assert!(err.contains("only valid with `scope: sdlc`"), "{err}");
     }
 
+    fn ledger(entries: Vec<MigrationEntry>) -> MigrationLedger {
+        MigrationLedger {
+            migrations: entries,
+        }
+    }
+
+    fn entry(version: u32, scope: LedgerScope, entity_names: &[&str]) -> MigrationEntry {
+        MigrationEntry {
+            version,
+            scope,
+            entities: entities(entity_names),
+            note: None,
+        }
+    }
+
+    #[test]
+    fn invalidation_scope_single_entry_in_range() {
+        let ledger = ledger(vec![entry(81, LedgerScope::Sdlc, &["Note"])]);
+        assert_eq!(
+            ledger.resolve_migration_scope_between(80, 81),
+            MigrationScope::Sdlc(entities(&["Note"]))
+        );
+    }
+
+    #[test]
+    fn invalidation_scope_unions_across_range() {
+        let ledger = ledger(vec![
+            entry(83, LedgerScope::Sdlc, &["Issue"]),
+            entry(82, LedgerScope::Sdlc, &["Note"]),
+        ]);
+        assert_eq!(
+            ledger.resolve_migration_scope_between(81, 83),
+            MigrationScope::Sdlc(entities(&["Issue", "Note"]))
+        );
+    }
+
+    #[test]
+    fn invalidation_scope_gap_in_range_widens_to_all() {
+        let ledger = ledger(vec![entry(83, LedgerScope::Sdlc, &["Note"])]);
+        assert_eq!(
+            ledger.resolve_migration_scope_between(81, 83),
+            MigrationScope::Full
+        );
+    }
+
+    #[test]
+    fn invalidation_scope_rollback_direction_is_all() {
+        let ledger = ledger(vec![entry(82, LedgerScope::Sdlc, &["Note"])]);
+        assert_eq!(
+            ledger.resolve_migration_scope_between(83, 82),
+            MigrationScope::Full
+        );
+        assert_eq!(
+            ledger.resolve_migration_scope_between(82, 82),
+            MigrationScope::Full
+        );
+    }
+
+    #[test]
+    fn invalidation_scope_mixing_code_and_sdlc_widens_to_all() {
+        let ledger = ledger(vec![
+            entry(82, LedgerScope::Code, &[]),
+            entry(81, LedgerScope::Sdlc, &["Note"]),
+        ]);
+        assert_eq!(
+            ledger.resolve_migration_scope_between(80, 82),
+            MigrationScope::Full
+        );
+    }
+
+    #[test]
+    fn embedded_ledger_loads() {
+        let ledger = MigrationLedger::load_embedded().expect("embedded ledger must parse");
+        assert!(!ledger.migrations.is_empty());
+    }
+
     #[test]
     fn entity_names_must_resolve() {
         let ledger = MigrationLedger {
             migrations: vec![MigrationEntry {
                 version: 1,
-                scope: Scope::Sdlc,
+                scope: LedgerScope::Sdlc,
                 entities: entities(&["Ghost"]),
                 note: None,
             }],
