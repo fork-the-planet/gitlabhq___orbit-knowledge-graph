@@ -1,6 +1,7 @@
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
+mod commands;
 mod descriptions;
 mod list;
 mod mcp;
@@ -224,14 +225,36 @@ enum Commands {
     #[command(
         long_about = "Print the bundled, version-matched orbit-local skill content.\n\n\
                       With no argument, prints SKILL.md (the manifest). Pass a relative path \
-                      such as `references/sql.md` or `scripts/repo_map.py` to print that file. \
-                      Write `scripts/repo_map.py` to a file to execute it: \
-                      `orbit skill scripts/repo_map.py > /tmp/repo_map.py`."
+                      such as `references/sql.md` or `references/repo_map.md` to print that file."
     )]
     Skill {
         /// Skill file to print, relative to the skill root (default: SKILL.md).
         #[arg(value_name = "PATH")]
         path: Option<String>,
+    },
+    #[command(name = "repo-map", about = descriptions::REPO_MAP_SHORT)]
+    #[command(
+        long_about = "Produce a high-level, LLM-oriented map of a locally indexed repository.\n\n\
+                       Scoped to the current commit; if it is not indexed, prints the index \
+                       command and exits. Running with no subcommand defaults to `overview`. \
+                       Drill down with `tree`, `api`, `class`, `extends`, and `imports`."
+    )]
+    RepoMap {
+        /// Repository path (default: current directory).
+        #[arg(long, value_name = "PATH")]
+        repo: Option<PathBuf>,
+
+        /// Limit output to source files with these extensions (repeat or
+        /// comma-separate; a leading dot is optional).
+        #[arg(long = "ext", value_name = "EXT")]
+        extensions: Vec<String>,
+
+        /// Override the DuckDB path (default: ~/.orbit/graph.duckdb).
+        #[arg(long, value_name = "PATH")]
+        db: Option<PathBuf>,
+
+        #[command(subcommand)]
+        command: Option<commands::repo_map::RepoMapCommand>,
     },
 }
 
@@ -300,6 +323,17 @@ async fn main() -> Result<()> {
             mcp::serve().await
         }
         Commands::Skill { path } => skill::run(path),
+        Commands::RepoMap {
+            repo,
+            extensions,
+            db,
+            command,
+        } => commands::repo_map::run(
+            repo,
+            extensions,
+            db,
+            command.unwrap_or(commands::repo_map::RepoMapCommand::Overview),
+        ),
     }
 }
 

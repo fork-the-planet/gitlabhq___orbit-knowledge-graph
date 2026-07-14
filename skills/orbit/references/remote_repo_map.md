@@ -1,7 +1,7 @@
 # Orbit remote repo map reference
 
 `remote_repo_map.py` is the remote counterpart to the local
-[`local_repo_map.py`](local_repo_map.md) helper. It maps source-code structure
+[`glab orbit local repo-map`](local_repo_map.md) command. It maps source-code structure
 for any project indexed in Orbit Remote by shelling out to
 `glab orbit remote query`, so it does not require a local checkout or an Orbit
 Local index.
@@ -23,7 +23,7 @@ Use the remote repo map when you need to:
 - Map types and callables under a path prefix with `api`.
 - Find callers of a method or function with `callers`.
 
-Prefer the local [`local_repo_map.py`](local_repo_map.md) helper when you are already in a
+Prefer the local [`glab orbit local repo-map`](local_repo_map.md) command when you are already in a
 checkout and need branch-local or unmerged code. Prefer paste-ready raw Orbit
 Remote JSON from [`recipes.md`](recipes.md) when the question is a single known
 entity lookup or a cross-domain SDLC query.
@@ -38,8 +38,7 @@ entity lookup or a cross-domain SDLC query.
 ## Invocation
 
 The script is at `./scripts/remote_repo_map.py` relative to the Orbit skill
-root. Path resolution rules are the same as for the local helper — see
-[Invocation in `local_repo_map.md`](local_repo_map.md#invocation).
+root.
 
 The default target is `gitlab-org/gitlab` (`project_id = 278964`) on `master`:
 
