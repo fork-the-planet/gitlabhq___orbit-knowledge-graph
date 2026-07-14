@@ -1,7 +1,7 @@
 ---
 name: orbit
 description: Query the GitLab Knowledge Graph (Orbit) via `glab orbit remote` CLI subcommands or run a local copy with `glab orbit local`. Use for code-structure questions (who calls this function, where is this symbol defined), cross-project dependency and blast-radius analysis, merge-request and contributor queries that require relationship traversal or aggregation, repository map / repo-map generation, and any question spanning relationships, cross-entity joins, or multi-entity aggregation across GitLab entities (projects, users, MRs, issues, pipelines, files, definitions, vulnerabilities). Do not use for single-entity GitLab lookups or write operations that `glab` handles directly (e.g. `glab mr view`, `glab mr create`).
-version: 0.17.5
+version: 0.17.6
 license: MIT
 metadata:
   audience: developers
@@ -144,11 +144,12 @@ lacks. Full guidance and worked examples:
 
 ## Repository map helpers
 
-For code-structure orientation before planning a change, use a bundled repo-map
-helper (script paths are relative to this skill root, not the user's current
-repo): the **local** helper for an uncommitted/branch-local checkout, the
-**remote** helper for a project already indexed in Orbit Remote. See the
-repository-map rows in [References](#references) below.
+For code-structure orientation before planning a change, use a repo-map helper:
+the native **local** command `glab orbit local repo-map` for an
+uncommitted/branch-local checkout, or the bundled **remote** helper script (path
+relative to this skill root, not the user's current repo) for a project already
+indexed in Orbit Remote. See the repository-map rows in
+[References](#references) below.
 
 ## Local CLI (glab orbit local)
 
@@ -167,7 +168,7 @@ pass-through args: [`references/local_cli.md`](references/local_cli.md).
 | Full DSL reference | [`references/query_language.md`](references/query_language.md) |
 | Paste-ready bodies per `query_type` | [`references/recipes.md`](references/recipes.md) |
 | Reporting results & coverage caveats | [`references/reporting.md`](references/reporting.md) |
-| Local repository map helper | [`references/local_repo_map.md`](references/local_repo_map.md) |
+| Local repository map command (`glab orbit local repo-map`) | [`references/local_repo_map.md`](references/local_repo_map.md) |
 | Remote repository map helper | [`references/remote_repo_map.md`](references/remote_repo_map.md) |
 | CLI exit codes (1-5), errors, iteration budget | [`references/troubleshooting.md`](references/troubleshooting.md) |
 | Local CLI flags, config keys & pass-through args | [`references/local_cli.md`](references/local_cli.md) |
