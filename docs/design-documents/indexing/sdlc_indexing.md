@@ -253,6 +253,12 @@ Each `extract` declares a `type` (currently only `clickhouse`, a required field 
 
 For the `.sql.j2` form the indexer renders `{{watermark_column}}` / `{{deleted_column}}` through MiniJinja at plan build (a generated `filter` may use them too), and fills `{{filters}}` / `{{batch_size}}` at runtime. All ontology SQL templates render through `ontology::sql_template` (strict-undefined MiniJinja). The first table in `extract.tables` is the partition-probe base table.
 
+The Arrow `RecordBatch` schema is the runtime contract between extraction and transformation.
+DataFusion registers each extracted batch with its own schema, so planning does not duplicate a
+partial Arrow schema. The owned `TransformDeclaration` contains only transform planning inputs. Generated
+edge extracts temporarily attach `EnrichedFieldSource` metadata to `ExtractSpec` so positional
+`_eN_*` fields can still be mapped to denormalized edge tags; this metadata is not a batch contract.
+
 **Pipeline: extract, transform, write**
 
 Each `EntityHandler` invocation runs its plan through a shared `Pipeline` struct. The loop works like this:

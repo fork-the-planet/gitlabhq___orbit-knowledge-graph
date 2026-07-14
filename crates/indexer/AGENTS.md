@@ -145,7 +145,10 @@ preventable feedback (see #2772, !1416). Check each of these first:
   `{{batch_size}}` through to query time. All ClickHouse dialect and SQL generation live in the
   indexer's `plan/` module. `build.rs` is the only place that reads `pipeline.transform`: it
   decomposes each pipeline and hands `extract/` transform-neutral inputs (it produces an
-  `ExtractSpec` with a validated `ExtractTemplate`) and `transform.rs` the rest;
+  `ExtractSpec` with a validated `ExtractTemplate`) and `transform.rs` an owned, narrow
+  `TransformDeclaration`; Arrow `RecordBatch` schemas are the runtime extract-transform contract,
+  not a duplicated planning type. `ExtractSpec` temporarily carries `EnrichedFieldSource` entries
+  for generated edge tags until enrichment aliases move into the extract declaration;
   `extract/enrichment.rs` derives the edge-endpoint `_eN` joins. `extract/` imports nothing from
   `transform`. None of this lives in the ontology crate.
 - **Concurrency:** independent datalake lookups (routes / MR / work-item) should run concurrently

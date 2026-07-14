@@ -185,18 +185,19 @@ and hands each stage exactly its inputs so data flows top-down:
   namespaced endpoints of a namespaced edge). `build.rs` calls it per edge plan and
   passes the joins to the extract renderer.
 - `plan/extract/` produces one `ExtractSpec` (validated `ExtractTemplate` +
-  effective watermark/deleted + batch schema) from `&ontology::Extract` plus
+  effective watermark/deleted) from `&ontology::Extract` plus
   transform-neutral inputs (typed source columns, `_batch` column lists, enrichment
   joins) computed by `build.rs`. It imports **nothing** from the transform stage.
   `build.rs` matches exhaustively on `ExtractQuery`: `Generated` dispatches to
   `generated::build` with a `generated::Shape` (`Node`, `SingleTable`, or `Enriched`),
   `Sql` dispatches to `sql::build`; `extract/generated.rs` renders SQL,
-  `extract/sql.rs` handles the authored escape hatch.
-- `plan/transform.rs` builds the `TransformSpec` (node column projection + FK edge
-  rows, or a standalone edge row, or a named Rust transform). Its denormalized-tag
-  columns come from `ontology.denormalized_properties()`, independent of the extract
-  joins. Net dependency direction: `build → {extract, transform}`, with enrichment
-  internal to `extract`; there is no extract↔transform edge.
+  `extract/sql.rs` handles the authored escape hatch. The `RecordBatch` schema produced at
+  runtime is the extract-transform contract; planning does not maintain a second schema model.
+- `plan/transform.rs` exposes an owned, narrow `TransformDeclaration` and builds the `TransformSpec`
+  (node column projection + FK edge rows, a standalone edge row, or a named Rust transform).
+  Generated endpoint enrichment temporarily leaves `EnrichedFieldSource` metadata on the
+  `ExtractSpec` so edge tags can resolve positional `_eN_*` fields. Net dependency direction is
+  `build → {extract, transform}`; neither stage imports the other.
 
 `ExtractTemplate::new` is the only way a `Plan` gets its `extract_template`, so an
 unvalidated template cannot reach the runtime. A build-time gate in `gkg-server`'s

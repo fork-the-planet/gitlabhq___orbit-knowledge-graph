@@ -1,25 +1,32 @@
 pub(in crate::modules::sdlc) mod build;
 pub(in crate::modules::sdlc) mod extract;
-mod schema;
 mod transform;
 
 pub(in crate::modules::sdlc) use build::{Sizing, build_plans};
 pub(in crate::modules::sdlc) use extract::ExtractTemplate;
-pub(in crate::modules::sdlc) use transform::{TransformSpec, Transformation};
+pub(in crate::modules::sdlc) use transform::{TransformDeclaration, TransformSpec, Transformation};
 
 pub(in crate::modules::sdlc) const SOURCE_DATA_TABLE: &str = "source_data";
 
 use arrow::record_batch::RecordBatch;
 use chrono::{DateTime, Utc};
 use gkg_utils::arrow::ArrowUtils;
-use ontology::EtlScope;
 use ontology::sql_template;
+use ontology::{DenormDirection, EtlScope};
 use serde_json::Value;
 
 use super::partitioning::PartitionAssignment;
 use crate::checkpoint::Checkpoint;
 use crate::clickhouse::TIMESTAMP_FORMAT;
 use crate::handler::HandlerError;
+
+#[derive(Debug)]
+pub(in crate::modules::sdlc) struct EnrichedFieldSource {
+    pub batch_field_name: String,
+    pub node_kind: String,
+    pub direction: DenormDirection,
+    pub source_node_column: String,
+}
 
 #[derive(Debug, Clone)]
 pub(in crate::modules::sdlc) struct Cursor {

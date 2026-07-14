@@ -3,15 +3,34 @@
 use std::collections::{BTreeMap, HashSet};
 
 use ontology::{
-    DataType, DenormDirection, EdgeMapping, EnumType, EtlScope, NodeEntity, NodeRef, NodeRefKind,
-    Ontology,
+    DataType, DenormDirection, EdgeMapping, EnumType, EtlScope, Field, NodeEntity, NodeRef,
+    NodeRefKind, Ontology, StorageColumn,
     constants::{DEFAULT_PRIMARY_KEY, DELETED_COLUMN, VERSION_COLUMN},
 };
 
 use crate::schema::version::{SCHEMA_VERSION, prefixed_table_name};
 
+use super::EnrichedFieldSource;
 use super::SOURCE_DATA_TABLE;
-use super::schema::BatchSchema;
+
+pub(in crate::modules::sdlc) enum TransformDeclaration {
+    Node(NodeTransformDeclaration),
+    Edge {
+        relationship_kind: String,
+        mapping: Box<EdgeMapping>,
+        scope: EtlScope,
+    },
+    Rust(String),
+}
+
+pub(in crate::modules::sdlc) struct NodeTransformDeclaration {
+    node_name: String,
+    fields: Vec<Field>,
+    storage_columns: Vec<StorageColumn>,
+    destination_table: String,
+    global: bool,
+    edges: Vec<EdgeMapping>,
+}
 
 /// How an extracted block becomes graph rows; a `Rust` transform owns its outputs and runs no SQL.
 #[derive(Debug, Clone)]
@@ -70,38 +89,79 @@ enum EdgeFilter {
     TypeIn { column: String, types: Vec<String> },
 }
 
-pub(super) fn rust_transform(name: &str) -> TransformSpec {
-    TransformSpec::Rust(name.to_string())
+impl TransformDeclaration {
+    pub(in crate::modules::sdlc) fn from_node_entity_and_edge_mappings(
+        node: &NodeEntity,
+        edges: &[EdgeMapping],
+    ) -> TransformDeclaration {
+        TransformDeclaration::Node(NodeTransformDeclaration {
+            node_name: node.name.clone(),
+            fields: node.fields.clone(),
+            storage_columns: node.storage.columns.clone(),
+            destination_table: node.destination_table.clone(),
+            global: node.global,
+            edges: edges.to_vec(),
+        })
+    }
 }
 
-pub(super) fn node_transform(
-    node: &NodeEntity,
-    edges: &[EdgeMapping],
+pub(super) fn build_transform_spec(
+    transform_declaration: TransformDeclaration,
+    enriched_fields: &[EnrichedFieldSource],
     ontology: &Ontology,
 ) -> TransformSpec {
-    let namespaced = !node.global;
-    let node_destination = prefixed_table_name(&node.destination_table, *SCHEMA_VERSION);
+    match transform_declaration {
+        TransformDeclaration::Node(node_transform) => {
+            build_node_transform(&node_transform, ontology)
+        }
+        TransformDeclaration::Edge {
+            relationship_kind,
+            mapping,
+            scope,
+        } => edge_transform(
+            &relationship_kind,
+            &mapping,
+            scope,
+            enriched_fields,
+            ontology,
+        ),
+        TransformDeclaration::Rust(name) => TransformSpec::Rust(name),
+    }
+}
+
+fn build_node_transform(
+    transform_declaration: &NodeTransformDeclaration,
+    ontology: &Ontology,
+) -> TransformSpec {
+    let namespaced = !transform_declaration.global;
+    let node_destination =
+        prefixed_table_name(&transform_declaration.destination_table, *SCHEMA_VERSION);
     let mut transforms = vec![Transformation {
-        sql: node_transform_sql(&node_columns(&node.fields)),
+        sql: node_transform_sql(&node_columns(&transform_declaration.fields)),
         destination_table: node_destination,
-        dict_encode_columns: low_cardinality_columns(&node.storage.columns),
+        dict_encode_columns: low_cardinality_columns(&transform_declaration.storage_columns),
     }];
 
-    for mapping in edges {
-        transforms.push(fk_edge_transform(mapping, &node.name, namespaced, ontology));
+    for mapping in &transform_declaration.edges {
+        transforms.push(fk_edge_transform(
+            mapping,
+            &transform_declaration.node_name,
+            namespaced,
+            ontology,
+        ));
     }
 
     TransformSpec::DataFusion(transforms)
 }
 
-pub(super) fn edge_transform(
+fn edge_transform(
     relationship_kind: &str,
     mapping: &EdgeMapping,
     scope: EtlScope,
-    batch_schema: &BatchSchema,
+    enriched_fields: &[EnrichedFieldSource],
     ontology: &Ontology,
 ) -> TransformSpec {
-    let denormalized = enriched_denormalized_columns(relationship_kind, batch_schema, ontology);
+    let denormalized = enriched_denormalized_columns(relationship_kind, enriched_fields, ontology);
     let filters = vec![
         EdgeFilter::IsNotNull(mapping.source.field.clone()),
         EdgeFilter::IsNotNull(mapping.target.field.clone()),
@@ -191,28 +251,28 @@ fn edge_transformation(
 
 fn enriched_denormalized_columns(
     relationship_kind: &str,
-    batch_schema: &BatchSchema,
+    enriched_fields: &[EnrichedFieldSource],
     ontology: &Ontology,
 ) -> Vec<DenormalizedColumnProjection> {
     let mut columns = Vec::new();
-    for column in batch_schema.enriched_columns() {
-        let Some(node) = ontology.get_node(&column.node_kind) else {
+    for field in enriched_fields {
+        let Some(node) = ontology.get_node(&field.node_kind) else {
             continue;
         };
         if let Some(dp) = ontology.denormalized_properties().iter().find(|dp| {
             dp.relationship_kind == relationship_kind
-                && dp.direction == column.direction
-                && dp.node_kind == column.node_kind
+                && dp.direction == field.direction
+                && dp.node_kind == field.node_kind
                 && {
-                    let field = node.fields.iter().find(|f| f.name == dp.property_name);
-                    let src_col = field
+                    let ontology_field = node.fields.iter().find(|f| f.name == dp.property_name);
+                    let source_column = ontology_field
                         .and_then(|f| f.column_name())
                         .unwrap_or(&dp.property_name);
-                    src_col == column.node_column
+                    source_column == field.source_node_column
                 }
         }) {
             columns.push(DenormalizedColumnProjection {
-                source_column: column.name.clone(),
+                source_column: field.batch_field_name.clone(),
                 edge_column: dp.edge_column.clone(),
                 tag_key: dp.tag_key.clone(),
                 enum_mapping: dp.enum_values.clone(),

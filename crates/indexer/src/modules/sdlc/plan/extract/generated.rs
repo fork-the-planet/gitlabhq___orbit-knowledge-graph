@@ -3,8 +3,8 @@
 use ontology::sql_template;
 use ontology::{DataType, EtlScope, constants::TRAVERSAL_PATH_COLUMN};
 
+use super::super::EnrichedFieldSource;
 use super::super::build::PlanError;
-use super::super::schema::{BatchSchema, EnrichedColumn};
 use super::enrichment::EnrichmentJoin;
 use super::{ExtractDecl, ExtractSpec, SourceColumn};
 
@@ -27,21 +27,15 @@ pub(in crate::modules::sdlc) fn build(
     filter: Option<&str>,
 ) -> Result<ExtractSpec, PlanError> {
     let filter = resolve_filter(decl, filter)?;
-    let (sql, schema) = match shape {
-        Shape::Node { columns } => (
-            render_node(decl, &columns, filter.as_deref()),
-            BatchSchema::opaque(),
-        ),
-        Shape::SingleTable { columns } => (
-            render_single_table(decl, &columns, filter.as_deref()),
-            BatchSchema::opaque(),
-        ),
+    let (sql, enriched_fields) = match shape {
+        Shape::Node { columns } => render_node(decl, &columns, filter.as_deref()),
+        Shape::SingleTable { columns } => render_single_table(decl, &columns, filter.as_deref()),
         Shape::Enriched {
             batch_columns,
             joins,
         } => render_enriched(decl, &batch_columns, &joins, filter.as_deref()),
     };
-    decl.build_spec(sql, schema)
+    decl.build_spec(sql, enriched_fields)
 }
 
 /// Substitutes `{{watermark_column}}`/`{{deleted_column}}` and rejects any other `{{marker}}`.
@@ -93,12 +87,20 @@ impl SelectColumn {
     }
 }
 
-fn render_node(decl: &ExtractDecl, columns: &[SourceColumn], filter: Option<&str>) -> String {
+fn render_node(
+    decl: &ExtractDecl,
+    columns: &[SourceColumn],
+    filter: Option<&str>,
+) -> (String, Vec<EnrichedFieldSource>) {
     let select: Vec<SelectColumn> = columns.iter().map(SelectColumn::typed).collect();
     render_single_table_sql(decl, &select, filter)
 }
 
-fn render_single_table(decl: &ExtractDecl, columns: &[String], filter: Option<&str>) -> String {
+fn render_single_table(
+    decl: &ExtractDecl,
+    columns: &[String],
+    filter: Option<&str>,
+) -> (String, Vec<EnrichedFieldSource>) {
     let select: Vec<SelectColumn> = columns.iter().map(|c| SelectColumn::bare(c)).collect();
     render_single_table_sql(decl, &select, filter)
 }
@@ -107,7 +109,7 @@ fn render_single_table_sql(
     decl: &ExtractDecl,
     columns: &[SelectColumn],
     filter: Option<&str>,
-) -> String {
+) -> (String, Vec<EnrichedFieldSource>) {
     let mut select_columns = Vec::new();
     let mut seen = std::collections::HashSet::new();
     for column in columns {
@@ -133,12 +135,15 @@ fn render_single_table_sql(
         where_clause = format!("{where_clause} AND ({filter})");
     }
 
-    format!(
-        "SELECT {} FROM {} WHERE {} {{{{filters}}}} ORDER BY {} LIMIT {{{{batch_size}}}}",
-        select_columns.join(", "),
-        decl.table,
-        where_clause,
-        decl.order_by.join(", ")
+    (
+        format!(
+            "SELECT {} FROM {} WHERE {} {{{{filters}}}} ORDER BY {} LIMIT {{{{batch_size}}}}",
+            select_columns.join(", "),
+            decl.table,
+            where_clause,
+            decl.order_by.join(", ")
+        ),
+        Vec::new(),
     )
 }
 
@@ -148,7 +153,7 @@ fn render_enriched(
     batch_columns: &[SourceColumn],
     joins: &[EnrichmentJoin],
     filter: Option<&str>,
-) -> (String, BatchSchema) {
+) -> (String, Vec<EnrichedFieldSource>) {
     let watermark = &decl.watermark;
     let deleted = &decl.deleted;
     let source = &decl.table;
@@ -182,7 +187,7 @@ fn render_enriched(
     final_cols.push("_batch._deleted AS _deleted".to_string());
 
     let mut join_clauses: Vec<String> = Vec::new();
-    let mut enriched: Vec<EnrichedColumn> = Vec::new();
+    let mut enriched_fields = Vec::new();
     for join in joins {
         let alias = &join.alias;
         let table = &join.table;
@@ -215,11 +220,11 @@ fn render_enriched(
                 c.clone()
             };
             final_cols.push(format!("{alias}.{c} AS {output}"));
-            enriched.push(EnrichedColumn {
-                name: output,
+            enriched_fields.push(EnrichedFieldSource {
+                batch_field_name: output,
                 node_kind: join.node_kind.clone(),
                 direction: join.direction.clone(),
-                node_column: c.clone(),
+                source_node_column: c.clone(),
             });
         }
     }
@@ -234,5 +239,5 @@ fn render_enriched(
         ctes.join(",\n  "),
         final_cols.join(",\n  "),
     );
-    (sql, BatchSchema::enriched(enriched))
+    (sql, enriched_fields)
 }

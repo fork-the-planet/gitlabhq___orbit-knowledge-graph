@@ -3,7 +3,6 @@
 //! `ontology::etl_sql::validate_authored_etl_sql`, not a runtime check here.
 
 use super::super::build::PlanError;
-use super::super::schema::BatchSchema;
 use ontology::constants::{DELETED_COLUMN, VERSION_COLUMN};
 use ontology::sql_template;
 
@@ -36,7 +35,7 @@ pub(in crate::modules::sdlc) fn build(
         template: ExtractTemplate::new(rendered)?,
         watermark,
         deleted,
-        batch_schema: BatchSchema::opaque(),
+        enriched_fields: Vec::new(),
     })
 }
 
