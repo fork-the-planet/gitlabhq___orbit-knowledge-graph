@@ -9856,6 +9856,7 @@ dependencies = [
  "clap",
  "clickhouse-client",
  "compiler",
+ "formatters",
  "gkg-server",
  "gkg-server-config",
  "gkg-utils",

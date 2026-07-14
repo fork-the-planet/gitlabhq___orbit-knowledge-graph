@@ -13,6 +13,10 @@ pub struct ProfilerOutput {
     pub pagination: Option<PaginationInfo>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub instance_health: Option<serde_json::Value>,
+    /// Formatted query response as served to agents (`--emit-response`):
+    /// a GOON string or a raw graph object.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub response: Option<serde_json::Value>,
 }
 
 #[derive(Serialize)]
@@ -76,6 +80,7 @@ pub fn build_output(
     output: &PipelineOutput,
     instance_health: Option<serde_json::Value>,
     correlation_id: &str,
+    response: Option<serde_json::Value>,
 ) -> ProfilerOutput {
     let query: serde_json::Value =
         serde_json::from_str(query_json).unwrap_or(serde_json::Value::String(query_json.into()));
@@ -125,5 +130,6 @@ pub fn build_output(
             next_cursor: p.next_cursor.clone(),
         }),
         instance_health,
+        response,
     }
 }
