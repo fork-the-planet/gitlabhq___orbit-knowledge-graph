@@ -11,7 +11,7 @@ use ontology::{
 
 use super::extract::{EnrichmentJoin, ExtractDecl, ExtractSpec, SourceColumn, generated, sql};
 use super::transform;
-use super::{Plan, Plans, TransformSpec};
+use super::{Plan, Plans, TransformDeclaration, TransformSpec};
 
 pub(in crate::modules::sdlc) struct Sizing<'a> {
     pub global_batch_size: u64,
@@ -75,7 +75,7 @@ pub(in crate::modules::sdlc) fn build_plans(
 
     for derived in ontology.derived_entities() {
         for pipeline in &derived.pipelines {
-            plans.insert(build_derived_plan(pipeline, &sizing)?)?;
+            plans.insert(build_derived_plan(pipeline, ontology, &sizing)?)?;
         }
     }
 
@@ -90,6 +90,8 @@ fn build_node_plan(
 ) -> Result<Plan, PlanError> {
     let Extract::ClickHouse(extract) = &pipeline.extract;
     let decl = ExtractDecl::of(pipeline);
+    let transform_declaration =
+        TransformDeclaration::from_node_entity_and_edge_mappings(node, pipeline.transform.edges());
 
     let spec = match &extract.query {
         ExtractQuery::Generated { filter } => {
@@ -103,7 +105,8 @@ fn build_node_plan(
         ExtractQuery::Sql(raw) => sql::build(&decl, raw)?,
     };
 
-    let transform = transform::node_transform(node, pipeline.transform.edges(), ontology);
+    let transform =
+        transform::build_transform_spec(transform_declaration, &spec.enriched_fields, ontology);
 
     Ok(assemble(
         pipeline,
@@ -132,6 +135,11 @@ fn build_edge_plan(
             relationship_kind: relationship_kind.to_string(),
             pipeline: pipeline.name.clone(),
         });
+    };
+    let transform_declaration = TransformDeclaration::Edge {
+        relationship_kind: relationship_kind.to_string(),
+        mapping: Box::new(mapping.clone()),
+        scope: pipeline.scope,
     };
 
     let Extract::ClickHouse(extract) = &pipeline.extract;
@@ -165,13 +173,8 @@ fn build_edge_plan(
         ExtractQuery::Sql(raw) => sql::build(&decl, raw)?,
     };
 
-    let transform = transform::edge_transform(
-        relationship_kind,
-        mapping,
-        pipeline.scope,
-        &spec.batch_schema,
-        ontology,
-    );
+    let transform =
+        transform::build_transform_spec(transform_declaration, &spec.enriched_fields, ontology);
 
     Ok(assemble(
         pipeline,
@@ -182,7 +185,11 @@ fn build_edge_plan(
     ))
 }
 
-fn build_derived_plan(pipeline: &Pipeline, sizing: &Sizing<'_>) -> Result<Plan, PlanError> {
+fn build_derived_plan(
+    pipeline: &Pipeline,
+    ontology: &Ontology,
+    sizing: &Sizing<'_>,
+) -> Result<Plan, PlanError> {
     let Transform::Rust(name) = &pipeline.transform else {
         return Err(PlanError::UnsupportedDerivedTransform(
             pipeline.name.clone(),
@@ -195,7 +202,9 @@ fn build_derived_plan(pipeline: &Pipeline, sizing: &Sizing<'_>) -> Result<Plan, 
     };
     let spec = sql::build(&decl, raw)?;
 
-    let transform = transform::rust_transform(name);
+    let transform_declaration = TransformDeclaration::Rust(name.clone());
+    let transform =
+        transform::build_transform_spec(transform_declaration, &spec.enriched_fields, ontology);
 
     Ok(assemble(
         pipeline,
