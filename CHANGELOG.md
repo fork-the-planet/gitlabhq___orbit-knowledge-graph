@@ -1,3 +1,53 @@
+## [0.88.0](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.87.0...v0.88.0) (2026-07-15)
+
+### Features
+
+* **dsl:** simplify order_by to compact "node.property" string ([52a8089](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/52a80893d3d4ccd171d349d1cf7641798699d7df)) by Aaron Algutifan
+* **indexer:** add namespace storage snapshots ([bb67ecb](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/bb67ecbe858f4c99399c488ec0be64656edf54dd)) by Jean-Gabriel Doyon
+* **indexer:** manage auxiliary tables and refreshable views ([f423882](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/f423882c7e9d54e9a4b14da244e26c6e60988862)) by Jean-Gabriel Doyon
+* **localization:** added Argo Translation YAML ([f91b129](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/f91b129be5515b03a1101deef022b96a9f35ebfa)) by Jack Cole
+* **ontology:** add note-gated 'none' migration ledger scope ([a9be551](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/a9be5515b917b2c12ff4d4422c21364a8b0ee154)) by Jean-Gabriel Doyon
+* **ontology:** compile unversioned tables and refreshable views ([752b297](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/752b297150b5b49c8181361347282c3904ff4c02)) by Jean-Gabriel Doyon
+* **orbit-local:** add native `repo-map` subcommand ([92d6566](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/92d65660416503030c22c3de0ad48eac62319550)) by Dmitry Gruzd
+* **profiler:** add flag to execute query & emit response for evals ([52392ee](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/52392eecb63a9a601ad3b5802ba9faee5d6ea820)) by Aaron Algutifan
+* **schema:** clone unchanged tables and re-index only invalidated entities on migration ([e4ee20e](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/e4ee20e40d0b86e7630cf27d16c4f5179fd2d499)) by Jean-Gabriel Doyon
+* **server:** shape named-query catalog for the preset dropdown ([5919ef5](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/5919ef5433212d52c5c29f567a2d8dfb0185b7c1)) by Aaron Algutifan
+
+### Fixes
+
+* **query:** serialize truncated date group keys as date strings ([6ceba38](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/6ceba380edb587d35de0ba70fbaa96e0633bda43)) by Michael Angelo Rivera
+
+### Other
+
+* **deps:** update oxc to crates_v0.139.0 and oxc_resolver to 11.24.2 ([66d51f2](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/66d51f20fd6daf8574ba6d0b3efa5808121f53b2)) by michaelangeloio
+* **deps:** update ra_ap crates to 0.0.342 ([9fc8a99](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/9fc8a994bee707ce58cce4c26919fa2994f3944f)) by michaelangeloio
+* **deps:** update rust crate comrak to 0.53.0 ([cedd9d7](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/cedd9d70605a2b75d99ed383793ab7d7faa0cfab)) by GitLab Renovate Bot
+* **deps:** update rust crate comrak to 0.53.0 ([ad79a28](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/ad79a287f44ada2eb6333253c64fc219d4fc7ab3)) by GitLab Renovate Bot
+* **deps:** update rust crate config to v0.15.25 ([a2ef187](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/a2ef18716e7682c656efad40c3c3b672006da607)) by GitLab Renovate Bot
+* **deps:** update rust crate duckdb to v1.10504.0 ([a011fc7](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/a011fc7f2b91571420a98aa46ec8c409560e28fe)) by GitLab Renovate Bot
+* **deps:** update rust crate indicatif to v0.18.6 ([ce499fe](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/ce499febfa178a9d4ce340ba74a5af03c4d852a5)) by GitLab Renovate Bot
+* **deps:** update rust crate insta to v1.48.0 ([4f0ed22](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/4f0ed229681beaaae9de71759e8d080568e8dfad)) by GitLab Renovate Bot
+* **deps:** update rust crate quote to v1.0.46 ([1e6f31a](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/1e6f31a0c447a91ab4bf717ad6cc859113d39f07)) by GitLab Renovate Bot
+* **deps:** update rust crate rand to v0.10.2 ([a9eb548](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/a9eb548e2bc63e6c351440e305e618cee159f2c2)) by GitLab Renovate Bot
+* **deps:** update rust crate rmcp to v1.8.0 ([71900f2](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/71900f2f5f3842b18fb6893faa7ccfd96325ddb6)) by GitLab Renovate Bot
+* **deps:** update rust crate rustc-hash to v2.1.3 ([4bed10c](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/4bed10c062081ecc0c6e1a87b2e0d6427cbf7dfb)) by GitLab Renovate Bot
+* **deps:** update rust crate toml to v1.1.3 ([d187177](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/d187177d52954732c2b7fdda719f1d55422bc354)) by GitLab Renovate Bot
+* **deps:** update rust crate triomphe to v0.1.16 ([0e4a359](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/0e4a359995f20adb9672b885d1fd30ab5e5a605e)) by GitLab Renovate Bot
+* **deps:** update rust crate uuid to v1.23.4 ([25f22b3](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/25f22b3dceaab21131e8bf361bbe3c29e153fc44)) by GitLab Renovate Bot
+* **e2e:** bump all e2e image and chart pins to current ([e8664f7](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/e8664f714625e926b664178bf7a9160a49762688)) by Michael Angelo Rivera
+* **e2e:** bump gkg chart to the 1.x line ([15b14cb](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/15b14cb2a9e97999728e6f9c5d494fa81a482b62)) by Michael Angelo Rivera
+* **i18n:** refine directory watched by Argo ([d7afdc9](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/d7afdc92f564a283fcb2797fd1044f297e6ee642)) by Lauren Barker
+* **i18n:** update ja-jp for commit 038f1e50 ([9b143aa](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/9b143aaa8a7a60756fc6fd337a45797e4e093be9)) by GitLab-Argo Bot
+* **i18n:** update ja-jp for commit 2a015e84 ([a5fc484](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/a5fc484aae6c184f0f2917e2f6596f26954abab4)) by GitLab-Argo Bot
+* **indexer:** compile stages from source-owned fields ([8f740b6](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/8f740b685b87525dec02b3bcdb20c20dfdb0bc98)) by Jean-Gabriel Doyon
+* **indexer:** declare topic subscription policy in module code ([7d63d2f](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/7d63d2fc350bd3f3cb4d183cfbf6256ee9588314)) by Jean-Gabriel Doyon
+* **indexer:** remove the duplicate batch contract ([b925a26](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/b925a261cefbee6fd7cf0e6540a0eaf40eb0f733)) by Jean-Gabriel Doyon
+* **indexer:** separate extract lookups from transform properties ([d6e3940](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/d6e3940395ef5e8993fcdcfbff4ead6e24fd424a)) by Jean-Gabriel Doyon
+* **migrations:** add ADR 017 for clone-based non-blocking migrations ([ccffe4f](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/ccffe4f09e670066394e956bb674e41a6a565605)) by Jean-Gabriel Doyon
+* **ontology:** unify entity ETL into declarative pipelines ([4f33796](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/4f33796f02800f3368af720d095fc9773afa8782)) by Jean-Gabriel Doyon
+* run docs Hugo test with latest docs Hugo container image ([8628aed](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/8628aed96c276cb9ab808471f3091becc8731775)) by Evan Read
+* **templates:** teach issue and MR templates the Orbit label taxonomy ([2ed9a05](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/2ed9a05521fa8d5e4f2c9d3e23b3f47f7b74f1cb)) by Michael Angelo Rivera
+
 ## [0.87.0](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.86.0...v0.87.0) (2026-07-09)
 
 ### Features
