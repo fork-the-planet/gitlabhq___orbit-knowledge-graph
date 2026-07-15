@@ -2,8 +2,8 @@
 stage: Analytics
 group: Knowledge Graph
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments
-description: Use the Orbit query language to search and traverse the knowledge graph.
-title: Orbit query language
+description: Use the GitLab Orbit query language to search and traverse the knowledge graph.
+title: GitLab Orbit query language
 ---
 
 {{< details >}}
@@ -26,7 +26,7 @@ title: Orbit query language
 > For more information, see the history.
 > This feature is available for testing, but not ready for production use.
 
-Use the Orbit query language when you need GitLab data as a graph instead of a
+Use the GitLab Orbit query language when you need GitLab data as a graph instead of a
 flat API response. A query is a JSON object. It names the entities to match,
 the relationships to follow, and the properties to return.
 
@@ -126,7 +126,7 @@ A node selector names one entity type in the ontology.
 |-------|------|-------------|
 | `id` | `string` | Local alias for the node. Relationships, aggregations, path, and neighbors refer to this alias. |
 | `entity` | `string` | Ontology node type, such as `Project`, `User`, `MergeRequest`, `File`, or `Definition`. |
-| `columns` | `string` or `array` | Properties to return. Use `"*"` for all non-restricted properties or an array of names. If omitted, Orbit returns the entity's default columns. |
+| `columns` | `string` or `array` | Properties to return. Use `"*"` for all non-restricted properties or an array of names. If omitted, GitLab Orbit returns the entity's default columns. |
 | `filters` | `object` | Property filters. |
 | `node_ids` | `array` | Exact IDs to match. Accepts integers or digit strings. Maximum 500. |
 | `id_range` | `object` | Inclusive ID range with `start` and `end`. |
@@ -242,7 +242,7 @@ Using these operators on other properties falls back to a full string scan, whic
 ## Columns and virtual columns
 
 Most columns come from indexed graph tables in ClickHouse. Some columns are
-virtual: Orbit fetches them from another service after the graph query returns.
+virtual: GitLab Orbit fetches them from another service after the graph query returns.
 
 Request virtual columns explicitly in `columns`. The `dynamic_columns` option
 used by `path_finding` and `neighbors` excludes virtual columns because they
@@ -592,7 +592,7 @@ Virtual columns still require an explicit request in a traversal query.
 
 ## Validation limits
 
-Orbit rejects broad or ambiguous queries before compiling SQL.
+GitLab Orbit rejects broad or ambiguous queries before compiling SQL.
 
 | Limit | Value |
 |-------|-------|
