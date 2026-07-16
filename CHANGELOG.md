@@ -1,3 +1,10 @@
+## [0.90.1](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.90.0...v0.90.1) (2026-07-16)
+
+### Fixes
+
+* **ci:** run the pin-bump job's glab calls as the automation bot ([42bbb41](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/42bbb415873eee575b22df4de950c29311a25cf7)) by Michael Angelo Rivera
+* **ci:** stop the project GITLAB_TOKEN variable from shadowing glab bot logins ([7035f11](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/7035f11685525495935d8330a8fc7d8f8d3ecd4e)) by Jean-Gabriel Doyon
+
 ## [0.90.0](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.89.0...v0.90.0) (2026-07-16)
 
 ### Features
