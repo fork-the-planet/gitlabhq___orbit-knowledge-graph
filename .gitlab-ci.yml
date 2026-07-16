@@ -51,6 +51,7 @@ include:
   - local: .gitlab/ci/release-local.yml
   - local: .gitlab/ci/stale-mr.yml
   - local: .gitlab/ci/e2e-pin-bump.yml
+  - local: .gitlab/ci/release-deploy-mr.yml
   - local: .gitlab/ci/comment-guard.yml
   - project: 'gitlab-com/gl-security/security-operations/infrastructure-security-public/oidc-modules'
     ref: '3.3.0'
@@ -114,6 +115,22 @@ stages:
     reports:
       junit:
         - target/nextest/ci/junit.xml
+
+# Identity for jobs acting as the Orbit automation bot (infra-mgmt!3039): the
+# glab image plus the bot token from Vault, readable on protected refs only.
+# Extend it and add your own rules, needs, and script.
+.automation-bot:
+  image: registry.gitlab.com/gitlab-org/cli:v1.102.0
+  tags:
+    - saas-linux-small-amd64
+  id_tokens:
+    VAULT_ID_TOKEN:
+      aud: https://vault.gitlab.net
+  secrets:
+    AUTOMATION_BOT_TOKEN:
+      file: false
+      vault: access_tokens/${VAULT_SECRETS_PATH}/automation-bot/token@ci
+      token: $VAULT_ID_TOKEN
 
 # "Solo" scheduled pipelines run exactly one job and skip the rest of the CI
 # suite. A schedule opts in by setting SCHEDULE_ONLY=<job-name>: the named job
@@ -1012,9 +1029,10 @@ semantic-release:
     - job: build-proto-gem
       optional: true
   rules:
-    - !reference [.skip-on-solo-schedule, rules]
     - if: $CI_PROJECT_ID != $CANONICAL_PROJECT_ID
       when: never
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULE_ONLY == "auto-release"
+    - !reference [.skip-on-solo-schedule, rules]
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
       when: manual
   before_script:
