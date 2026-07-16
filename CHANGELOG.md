@@ -1,3 +1,24 @@
+## [0.89.0](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.88.1...v0.89.0) (2026-07-16)
+
+### Features
+
+* **ci:** automate the daily release cut and argocd-apps deploy MR ([50dd47a](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/50dd47ab007ae1686e3b75b81747c883b13fbe98)) by Jean-Gabriel Doyon
+* **indexer:** cap resource-derived workers by the container memory limit ([ef7ac59](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/ef7ac593571ff2c33d25848c11994984ce988edc)) by Jean-Gabriel Doyon
+* **indexer:** derive default concurrency from resources ([25bc8bd](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/25bc8bd2cb39b8a7d2d71c1b8d228f649c4da9a3)) by Jean-Gabriel Doyon
+* **indexer:** derive SDLC datalake batch size from the container memory limit ([d858eae](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/d858eae4dd49717b58af49be4a429d02658f3558)) by Jean-Gabriel Doyon
+
+### Fixes
+
+* **ci:** run advanced SAST in security stage ([fd42a90](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/fd42a90942459c073b80cd42cee4100a34ec5f2f)) by Jean-Gabriel Doyon
+* **indexer:** give schema-version writes a unique dedup token ([fd7ec5e](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/fd7ec5eb938a3aafdcdd71738714d7ac2d07fb72)) by Jean-Gabriel Doyon
+* **indexer:** hex-encode raw-binary commit SHAs before Arrow decode ([f5779b0](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/f5779b075aa0831fa4982ea6324f4e6b2faa727f)) by Jean-Gabriel Doyon
+* **indexer:** sweep stale code rows per namespace ([6dee62b](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/6dee62bb401b2eae31393af0b5b38ee5255c8ab0)) by Michael Angelo Rivera
+
+### Other
+
+* **ci:** add scheduled e2e pin-bump automation ([62b41c5](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/62b41c57d9a66486600eb2bb833d40ce5671281a)) by Michael Angelo Rivera
+* **dsl:** unify query DSL on the nodes array ([7007a2b](https://gitlab.com/gitlab-org/orbit/knowledge-graph/commit/7007a2b419cf61c4a1dc23b5e7f7f1c1a9a3e2bb)) by Aaron Algutifan
+
 ## [0.88.1](https://gitlab.com/gitlab-org/orbit/knowledge-graph/compare/v0.88.0...v0.88.1) (2026-07-15)
 
 ### Fixes
