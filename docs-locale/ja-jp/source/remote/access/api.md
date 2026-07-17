@@ -194,7 +194,7 @@ curl --header "Authorization: Bearer <your_token>" \
 
 ## ツールエンドポイント {#tools-endpoint}
 
-MCPクライアントと互換性のある形式で、`query_graph`と`get_graph_schema`のMCPツール定義を返します。
+MCPクライアントと互換性のある形式で、`list_commands`と`invoke_command`のMCPツール定義を返します。
 
 ```shell
 curl --header "Authorization: Bearer <your_token>" \
