@@ -234,7 +234,7 @@ Pass the query below as `invoke_command` with
   "aggregations": [
     {"function": "count", "target": "mr", "alias": "open_mrs"}
   ],
-  "aggregation_sort": {"column": "open_mrs", "direction": "DESC"},
+  "aggregation_sort": "-open_mrs",
   "limit": 10
 }
 ```
